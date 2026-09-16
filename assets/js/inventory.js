@@ -529,7 +529,36 @@ function renderStockBreakdownBanner(formId, item, overrideOpeningQty = 0) {
   `;
 }
 
-function openAddTechnical() {
+async function getNextOpeningBatchNo() {
+  try {
+    const { data: batches } = await window.dbClient
+      .from('stock_batches')
+      .select('batch_no')
+      .order('id', { ascending: false });
+      
+    let maxNum = 0;
+    if (batches && batches.length > 0) {
+      for (const b of batches) {
+        if (b.batch_no && typeof b.batch_no === 'string') {
+          const match = b.batch_no.match(/^OPEN-(\d+)$/i);
+          if (match) {
+            const n = parseInt(match[1], 10);
+            if (!isNaN(n) && n > maxNum && n < 100000) {
+              maxNum = n;
+            }
+          }
+        }
+      }
+    }
+    const nextNum = maxNum + 1;
+    return `OPEN-${String(nextNum).padStart(2, '0')}`;
+  } catch (err) {
+    console.error('Error getting next opening batch no:', err);
+    return 'OPEN-01';
+  }
+}
+
+async function openAddTechnical() {
   editingItemId = null;
   document.getElementById('technical-modal-title').textContent = 'Add Technical Item';
   const form = document.getElementById('technical-form');
@@ -541,10 +570,13 @@ function openAddTechnical() {
   populateTechUnitSelect('Nos');
   toggleOpeningStockSection();
   goToInventoryStep('technical', 1);
+  const nextBatch = await getNextOpeningBatchNo();
+  const batchField = document.querySelector('#technical-form [name="opening_batch_no"]');
+  if (batchField && !batchField.value) batchField.value = nextBatch;
   APP.openModal('technical-modal');
 }
 
-function openAddBottle() {
+async function openAddBottle() {
   editingItemId = null;
   document.getElementById('bottle-modal-title').textContent = 'Add Bottle Option';
   const form = document.getElementById('bottle-form');
@@ -556,10 +588,13 @@ function openAddBottle() {
   populateDependentTypes(masterCache.bottles, 'tech-bottle-type-select', 'tech-bottle-size-select');
   toggleOpeningStockSection();
   goToInventoryStep('bottle', 1);
+  const nextBatch = await getNextOpeningBatchNo();
+  const batchField = document.querySelector('#bottle-form [name="opening_batch_no"]');
+  if (batchField && !batchField.value) batchField.value = nextBatch;
   APP.openModal('bottle-modal');
 }
 
-function openAddBox() {
+async function openAddBox() {
   editingItemId = null;
   document.getElementById('box-modal-title').textContent = 'Add Box Option';
   const form = document.getElementById('box-form');
@@ -571,10 +606,13 @@ function openAddBox() {
   populateDependentTypes(masterCache.boxes, 'tech-box-type-select', 'tech-box-size-select');
   toggleOpeningStockSection();
   goToInventoryStep('box', 1);
+  const nextBatch = await getNextOpeningBatchNo();
+  const batchField = document.querySelector('#box-form [name="opening_batch_no"]');
+  if (batchField && !batchField.value) batchField.value = nextBatch;
   APP.openModal('box-modal');
 }
 
-function openAddLabel() {
+async function openAddLabel() {
   editingItemId = null;
   document.getElementById('label-modal-title').textContent = 'Add Label Option';
   const form = document.getElementById('label-form');
@@ -587,10 +625,13 @@ function openAddLabel() {
   populateDependentTypes(labelOpts, 'tech-label-type-select', 'tech-label-size-select');
   toggleOpeningStockSection();
   goToInventoryStep('label', 1);
+  const nextBatch = await getNextOpeningBatchNo();
+  const batchField = document.querySelector('#label-form [name="opening_batch_no"]');
+  if (batchField && !batchField.value) batchField.value = nextBatch;
   APP.openModal('label-modal');
 }
 
-function openAddOther() {
+async function openAddOther() {
   editingItemId = null;
   document.getElementById('other-modal-title').textContent = 'Add Other Item';
   const form = document.getElementById('other-form');
@@ -601,6 +642,9 @@ function openAddOther() {
   }
   toggleOpeningStockSection();
   goToInventoryStep('other', 1);
+  const nextBatch = await getNextOpeningBatchNo();
+  const batchField = document.querySelector('#other-form [name="opening_batch_no"]');
+  if (batchField && !batchField.value) batchField.value = nextBatch;
   APP.openModal('other-modal');
 }
 
@@ -769,7 +813,10 @@ async function saveInventoryItemAPI(payload) {
   try {
     const openingQty = parseFloat(payload.opening_qty) || 0;
     const openingCost = parseFloat(payload.opening_cost) || 0;
-    const openingBatchNo = payload.opening_batch_no || '';
+    let openingBatchNo = payload.opening_batch_no || '';
+    if (!openingBatchNo && openingQty > 0) {
+      openingBatchNo = await getNextOpeningBatchNo();
+    }
     
     // Construct sanitized database payload for inventory_items table
     const dbPayload = {
@@ -798,7 +845,7 @@ async function saveInventoryItemAPI(payload) {
            initial_qty: openingQty,
            current_qty: openingQty,
            purchase_price: openingCost,
-           batch_no: openingBatchNo || ('OPEN-' + Date.now()),
+           batch_no: openingBatchNo || 'OPEN-01',
            unit: dbPayload.unit || ''
         }).eq('id', batches[0].id);
       } else if (openingQty > 0) {
@@ -806,7 +853,7 @@ async function saveInventoryItemAPI(payload) {
           item_id: savedId,
           item_name: dbPayload.name,
           item_type: 'Inventory',
-          batch_no: openingBatchNo || ('OPEN-' + Date.now()),
+          batch_no: openingBatchNo || 'OPEN-01',
           purchase_price: openingCost,
           initial_qty: openingQty,
           current_qty: openingQty,
@@ -825,7 +872,7 @@ async function saveInventoryItemAPI(payload) {
           item_id: savedId,
           item_name: dbPayload.name,
           item_type: 'Inventory',
-          batch_no: openingBatchNo || ('OPEN-' + Date.now()),
+          batch_no: openingBatchNo || 'OPEN-01',
           purchase_price: openingCost,
           initial_qty: openingQty,
           current_qty: openingQty,
@@ -1248,8 +1295,12 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       manageBtn.style.display = 'inline-flex';
     }
 
+    const techFilterWrap = document.getElementById('tech-filter-wrap');
     const techFilter = document.getElementById('tech-filter-select');
-    if (techFilter) {
+    if (techFilterWrap) {
+      techFilterWrap.style.display = (activeTab === 'Technical') ? 'inline-block' : 'none';
+      if (activeTab !== 'Technical' && techFilter) techFilter.value = '';
+    } else if (techFilter) {
       techFilter.style.display = (activeTab === 'Technical') ? 'inline-block' : 'none';
       if (activeTab !== 'Technical') techFilter.value = '';
     }
@@ -1260,5 +1311,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 document.getElementById('search-input')?.addEventListener('input', () => renderTable(allInventory));
 document.getElementById('tech-filter-select')?.addEventListener('change', () => renderTable(allInventory));
+
+const initialTechFilterWrap = document.getElementById('tech-filter-wrap');
+if (initialTechFilterWrap) {
+  initialTechFilterWrap.style.display = (activeTab === 'Technical') ? 'inline-block' : 'none';
+}
 
 loadInventory();

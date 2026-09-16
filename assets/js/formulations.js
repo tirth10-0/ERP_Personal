@@ -733,7 +733,18 @@ async function saveFormulation() {
 
   const ingredients = getIngredientPayload();
   const existingRecord = editingFormId ? allFormulations.find(item => item.id === editingFormId) : null;
-  const nextNo = existingRecord?.batch_no || `FML-${String(allFormulations.length + 1).padStart(4, '0')}`;
+  let nextNo = existingRecord?.batch_no;
+  if (!nextNo) {
+    let maxNum = 0;
+    (allFormulations || []).forEach(f => {
+      const match = String(f.batch_no || '').match(/^FML-(\d+)$/i);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (n > maxNum && n < 100000) maxNum = n;
+      }
+    });
+    nextNo = `FML-${String(maxNum + 1).padStart(2, '0')}`;
+  }
 
   const bodyData = {
     product_id: existingRecord?.product_id || 1,
@@ -818,7 +829,15 @@ async function openProduction(id) {
   }
 
   document.getElementById('prod-formulation-id').value = id;
-  document.getElementById('prod-batch-no').value = `B-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(id).padStart(3, '0')}`;
+  let maxProdNum = 0;
+  (allFormulations || []).forEach(f => {
+    const match = String(f.batch_no || '').match(/^(?:BATCH|B)-(\d+)$/i);
+    if (match) {
+      const n = parseInt(match[1], 10);
+      if (n > maxProdNum && n < 100000) maxProdNum = n;
+    }
+  });
+  document.getElementById('prod-batch-no').value = `BATCH-${String(maxProdNum + 1).padStart(2, '0')}`;
   document.getElementById('prod-batch-size').value = row.batch_size || '';
   document.getElementById('prod-unit-label').textContent = row.batch_unit || 'L';
 

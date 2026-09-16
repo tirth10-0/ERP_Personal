@@ -123,10 +123,24 @@
             prodId = Number(prodId);
           }
 
+          let batchNo = body.batch_no;
+          if (!batchNo) {
+            const { data: allForms } = await client.from('formulations').select('batch_no');
+            let maxNum = 0;
+            (allForms || []).forEach(f => {
+              const match = String(f.batch_no || '').match(/^(?:BATCH|B)-(\d+)$/i);
+              if (match) {
+                const n = parseInt(match[1], 10);
+                if (n > maxNum && n < 100000) maxNum = n;
+              }
+            });
+            batchNo = `BATCH-${String(maxNum + 1).padStart(2, '0')}`;
+          }
+
           const payload = {
             product_id: prodId,
             product_name: body.product_name || '',
-            batch_no: body.batch_no || ('BATCH-' + Date.now().toString().slice(-6)),
+            batch_no: batchNo,
             batch_size: parseFloat(body.batch_size) || 1000,
             batch_unit: body.batch_unit || 'L',
             notes: body.notes || '',
@@ -177,10 +191,16 @@
             prodId = Number(prodId);
           }
 
+          let batchNo = body.batch_no;
+          if (!batchNo) {
+            const { data: existingForm } = await client.from('formulations').select('batch_no').eq('id', id).single();
+            batchNo = existingForm?.batch_no || 'BATCH-01';
+          }
+
           const payload = {
             product_id: prodId,
             product_name: body.product_name || '',
-            batch_no: body.batch_no || ('BATCH-' + Date.now().toString().slice(-6)),
+            batch_no: batchNo,
             batch_size: parseFloat(body.batch_size) || 1000,
             batch_unit: body.batch_unit || 'L',
             notes: body.notes || '',

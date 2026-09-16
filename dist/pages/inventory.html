@@ -10,7 +10,7 @@
   <link rel="manifest" href="/assets/manifest-CKQtQ5T_.json?v=1789539216064">
   <meta name="theme-color" content="#10B981">
   <link rel="icon" type="image/jpeg" href="/assets/logo-Dj506C6u.jpg">
-  <link rel="stylesheet" crossorigin href="/assets/search-select-CytF2XZq.css">
+  <link rel="stylesheet" crossorigin href="/assets/search-select-ZFxwbrzg.css">
 </head>
 <body>
 <div class="app-layout" id="app-layout">
@@ -38,15 +38,17 @@
         <div class="table-toolbar">
           <div class="table-toolbar-left">
             <div class="table-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="search-input" placeholder="Search inventory…"></div>
-            <select id="tech-filter-select" class="form-select" style="margin-left: 10px; max-width: 200px; padding: 6px 12px; height: 36px; display: none;">
-              <option value="">All Technicals</option>
-              <option value="TECHNICAL">TECHNICAL</option>
-              <option value="PGR">PGR</option>
-              <option value="INSECTICIDE">INSECTICIDE</option>
-              <option value="FUNGICIDE">FUNGICIDE</option>
-              <option value="HERBICIDE">HERBICIDE</option>
-              <option value="SOLVENT">SOLVENT</option>
-            </select>
+            <div class="table-filter" id="tech-filter-wrap" style="display: none;">
+              <select id="tech-filter-select">
+                <option value="">All Technicals</option>
+                <option value="TECHNICAL">TECHNICAL</option>
+                <option value="PGR">PGR</option>
+                <option value="INSECTICIDE">INSECTICIDE</option>
+                <option value="FUNGICIDE">FUNGICIDE</option>
+                <option value="HERBICIDE">HERBICIDE</option>
+                <option value="SOLVENT">SOLVENT</option>
+              </select>
+            </div>
           </div>
           <div class="table-toolbar-right"><span class="text-sm text-muted" id="total-info">Loading…</span></div>
         </div>

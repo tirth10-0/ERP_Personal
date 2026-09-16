@@ -105,7 +105,33 @@ function renderTable(data) {
   UTILS.applyMobileTableLabels('production-table');
 }
 
-function openProductionModal() {
+async function getNextProductionBatchNo() {
+  try {
+    const { data: formBatches } = await window.dbClient
+      .from('formulations')
+      .select('batch_no');
+      
+    let maxNum = 0;
+    const all = [...(allProductions || []), ...(formBatches || [])];
+    for (const b of all) {
+      if (b.batch_no && typeof b.batch_no === 'string') {
+        const match = b.batch_no.match(/^(?:BATCH|B)-(\d+)$/i);
+        if (match) {
+          const n = parseInt(match[1], 10);
+          if (!isNaN(n) && n > maxNum && n < 100000) {
+            maxNum = n;
+          }
+        }
+      }
+    }
+    return `BATCH-${String(maxNum + 1).padStart(2, '0')}`;
+  } catch (err) {
+    console.error('Error getting next production batch no:', err);
+    return 'BATCH-01';
+  }
+}
+
+async function openProductionModal() {
   editingProductionId = null;
   document.getElementById('production-form').reset();
   document.querySelector('[name="date"]').value = UTILS.todayStr();
@@ -120,6 +146,10 @@ function openProductionModal() {
     }
   }
   
+  const nextBatch = await getNextProductionBatchNo();
+  const batchField = document.querySelector('#production-form [name="batch_no"]');
+  if (batchField) batchField.value = nextBatch;
+
   currentLines = [];
   addIngredientRow();
   APP.openModal('production-modal');
@@ -250,20 +280,8 @@ async function saveProduction() {
   try {
     const prodObj = cachedProducts.find(p => p.id == d.product_id);
     let finalBatchNo = d.batch_no;
-    if (!finalBatchNo && !editingProductionId) {
-      let maxNum = 0;
-      for (let b of allProductions) {
-        if (b.batch_no && b.batch_no.startsWith('B-')) {
-          const numStr = b.batch_no.substring(2);
-          if (/^\d+$/.test(numStr)) {
-            const num = parseInt(numStr, 10);
-            if (num < 1000000 && num > maxNum) maxNum = num;
-          }
-        }
-      }
-      finalBatchNo = 'B-' + String(maxNum + 1).padStart(2, '0');
-    } else if (!finalBatchNo) {
-      finalBatchNo = 'B-' + Date.now();
+    if (!finalBatchNo) {
+      finalBatchNo = await getNextProductionBatchNo();
     }
     
     const payload = {

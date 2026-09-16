@@ -169,7 +169,7 @@ async function openAdd() {
   purchaseForm.reset();
   await refreshPurchasableItems();
   purchaseItems = [];
-  renderPurchaseItems();
+  await addPurchaseItem();
   UTILS.applyDefaultDateInputs(purchaseForm, { skipFieldNames: ['due_date'] });
   APP.openModal('purchase-modal');
 }
@@ -205,8 +205,51 @@ async function openEdit(id) {
   }
 }
 
-function addPurchaseItem() {
-  purchaseItems.push({ id: Date.now(), item_id: '', item_name: '', item_type: 'Catalog', quantity: 1, unit_price: 0, batch_no: '', expiry_date: '', total: 0 });
+async function getNextPurchaseBatchNo(offset = 0) {
+  try {
+    const { data: batches } = await window.dbClient
+      .from('stock_batches')
+      .select('batch_no');
+    const { data: purItems } = await window.dbClient
+      .from('purchase_items')
+      .select('batch_no');
+      
+    let maxNum = 0;
+    const all = [...(batches || []), ...(purItems || [])];
+    for (const b of all) {
+      if (b.batch_no && typeof b.batch_no === 'string') {
+        const match = b.batch_no.match(/^PUR-(\d+)$/i);
+        if (match) {
+          const n = parseInt(match[1], 10);
+          if (!isNaN(n) && n > maxNum && n < 100000) {
+            maxNum = n;
+          }
+        }
+      }
+    }
+    // Also consider any batch numbers already assigned in the current purchaseItems table
+    for (const it of purchaseItems) {
+      if (it.batch_no && typeof it.batch_no === 'string') {
+        const match = it.batch_no.match(/^PUR-(\d+)$/i);
+        if (match) {
+          const n = parseInt(match[1], 10);
+          if (!isNaN(n) && n > maxNum && n < 100000) {
+            maxNum = n;
+          }
+        }
+      }
+    }
+    const nextNum = maxNum + 1 + offset;
+    return `PUR-${String(nextNum).padStart(2, '0')}`;
+  } catch (err) {
+    console.error('Error getting next purchase batch no:', err);
+    return `PUR-${String(1 + offset).padStart(2, '0')}`;
+  }
+}
+
+async function addPurchaseItem() {
+  const nextBatch = await getNextPurchaseBatchNo(0);
+  purchaseItems.push({ id: Date.now(), item_id: '', item_name: '', item_type: 'Catalog', quantity: 1, unit_price: 0, batch_no: nextBatch, expiry_date: '', total: 0 });
   renderPurchaseItems();
 }
 
@@ -437,14 +480,28 @@ async function savePurchaseDirect(payload, items) {
 
   // Insert purchase line items
   if (items && items.length > 0) {
-    const pItems = items.map(it => ({
+    let unassignedBatchOffset = 0;
+    const resolvedItems = [];
+    for (const it of items) {
+      let bNo = it.batch_no ? it.batch_no.trim() : '';
+      if (!bNo) {
+        bNo = await getNextPurchaseBatchNo(unassignedBatchOffset);
+        unassignedBatchOffset++;
+      }
+      resolvedItems.push({
+        ...it,
+        batch_no: bNo
+      });
+    }
+
+    const pItems = resolvedItems.map(it => ({
       purchase_id: purchaseId,
       item_id: it.item_id ? parseInt(it.item_id, 10) : null,
       item_name: it.item_name || '',
       item_type: it.item_type || 'Inventory',
       quantity: parseFloat(it.quantity) || 0,
       unit_price: parseFloat(it.unit_price) || 0,
-      batch_no: it.batch_no || (`PUR-${purchaseId}-${it.item_id || '0'}`),
+      batch_no: it.batch_no,
       expiry_date: it.expiry_date || null,
       total: parseFloat(it.total) || 0
     }));
@@ -453,11 +510,11 @@ async function savePurchaseDirect(payload, items) {
 
     // If Delivered, create stock batches for inventory tracking
     if (payload.p_status === 'Delivered') {
-      const stockBatches = items.filter(it => it.item_id).map(it => ({
+      const stockBatches = resolvedItems.filter(it => it.item_id).map(it => ({
         item_id: parseInt(it.item_id, 10),
         item_name: it.item_name || '',
         item_type: it.item_type || 'Inventory',
-        batch_no: it.batch_no || (`PUR-${purchaseId}-${it.item_id}`),
+        batch_no: it.batch_no,
         purchase_id: purchaseId,
         supplier_id: payload.p_supplier_id ? parseInt(payload.p_supplier_id, 10) : null,
         purchase_date: payload.p_date,

@@ -269,6 +269,66 @@ function renderIngredientsTable() {
   }, 10);
 }
 
+// Helper: Revert any previously applied stock batch deductions/creations for a production batch
+async function revertProductionStock(prodBatch) {
+  if (!prodBatch) return;
+  const batchNo = prodBatch.batch_no;
+
+  // 1. Remove produced output batch(es) from stock_batches matching this batch_no
+  if (batchNo) {
+    await window.dbClient.from('stock_batches')
+      .delete()
+      .eq('item_type', 'Inventory')
+      .eq('batch_no', batchNo);
+  }
+
+  // 2. Restore consumed raw materials back to inventory stock_batches
+  const ings = prodBatch.production_ingredients || [];
+  for (const ing of ings) {
+    const rawQty = parseFloat(ing.quantity_used) || 0;
+    const isConsumed = rawQty > 0; // In formulation_ingredients, positive quantity = raw material consumed
+    const itemId = parseInt(ing.inventory_id, 10);
+    if (!itemId) continue;
+
+    if (isConsumed) {
+      // Return consumed quantity back to the oldest existing stock_batch for this item
+      const { data: batches } = await window.dbClient.from('stock_batches')
+        .select('*')
+        .eq('item_id', itemId)
+        .eq('item_type', 'Inventory')
+        .order('id', { ascending: true })
+        .limit(1);
+
+      if (batches && batches.length > 0) {
+        const cur = parseFloat(batches[0].current_qty) || 0;
+        await window.dbClient.from('stock_batches')
+          .update({ current_qty: cur + rawQty })
+          .eq('id', batches[0].id);
+      } else {
+        // Create an opening batch if none found
+        const invObj = cachedInventory.find(i => i.id == itemId);
+        await window.dbClient.from('stock_batches').insert([{
+          item_id: itemId,
+          item_name: invObj ? invObj.name : 'Raw Material',
+          item_type: 'Inventory',
+          batch_no: 'OPEN-01',
+          initial_qty: rawQty,
+          current_qty: rawQty,
+          unit: ing.unit || (invObj ? invObj.unit : 'Kg'),
+          purchase_price: 0
+        }]);
+      }
+    }
+  }
+
+  // Remove corresponding movements
+  if (batchNo) {
+    try {
+      await window.dbClient.from('stock_movements').delete().eq('reference', batchNo);
+    } catch (_) {}
+  }
+}
+
 async function saveProduction() {
   const d = UTILS.getFormData('production-form');
   if (!d.product_id) { APP.showToast('Product is required', 'error'); return; }
@@ -299,6 +359,12 @@ async function saveProduction() {
     let savedId = editingProductionId;
     
     if (editingProductionId) {
+      // Revert previous stock changes before applying new edits
+      const oldProd = allProductions.find(x => x.id === editingProductionId);
+      if (oldProd) {
+        await revertProductionStock(oldProd);
+      }
+
       const { error } = await window.dbClient.from('formulations').update(payload).eq('id', editingProductionId);
       if (error) throw error;
       
@@ -412,10 +478,17 @@ async function saveProduction() {
 async function deleteProduction(id) {
   APP.showConfirm('Delete this production batch?', async () => {
     try {
+      const prodToDelete = allProductions.find(x => x.id === id);
+      if (prodToDelete) {
+        // Revert raw materials and delete production stock batch
+        await revertProductionStock(prodToDelete);
+      }
+
+      await window.dbClient.from('formulation_ingredients').delete().eq('formulation_id', id);
       const { error } = await window.dbClient.from('formulations').delete().eq('id', id);
       if (error) throw error;
       
-      APP.showToast('Production batch deleted!', 'success');
+      APP.showToast('Production batch deleted and inventory restored!', 'success');
       loadData();
     } catch (e) {
       console.error(e);

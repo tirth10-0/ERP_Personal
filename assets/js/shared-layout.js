@@ -7,11 +7,16 @@
   document.documentElement.setAttribute('data-theme', initialTheme);
 })();
 
-const SIDEBAR_HTML = `
+function getLogoUrl() {
+  const isPagesDir = window.location.pathname.includes('/pages/');
+  return isPagesDir ? '../assets/images/logo.jpg' : './assets/images/logo.jpg';
+}
+
+const SIDEBAR_HTML = (logoUrl = getLogoUrl()) => `
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="sidebar-logo">
-      <img src="../assets/images/logo.jpg" alt="Anjani Crop Care">
+      <img src="${logoUrl}" alt="Anjani Crop Care" onerror="this.onerror=null; this.src=window.location.pathname.includes('/pages/') ? '../assets/images/sk-logo.jpg' : './assets/images/sk-logo.jpg';">
     </div>
     <div class="sidebar-brand"><h1>Anjani ERP</h1><span>Crop Care Management</span></div>
     <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" type="button" aria-label="Toggle sidebar" title="Toggle sidebar">
@@ -49,7 +54,7 @@ const SIDEBAR_HTML = `
 </aside>
 <div class="sidebar-overlay" id="sidebar-overlay"></div>`;
 
-const TOPBAR_HTML = (title, breadcrumb) => `
+const TOPBAR_HTML = (title, breadcrumb, logoUrl = getLogoUrl()) => `
 <header class="topbar" id="topbar">
   <div class="topbar-left">
     <button class="sidebar-toggle-btn sidebar-toggle-mobile" id="sidebar-toggle-mobile-btn" type="button" aria-label="Toggle sidebar" title="Toggle sidebar">
@@ -57,7 +62,7 @@ const TOPBAR_HTML = (title, breadcrumb) => `
     </button>
     <div class="topbar-mobile-brand">
       <div class="topbar-logo" style="padding: 1px;">
-        <img src="../assets/images/logo.jpg" alt="Anjani Crop Care" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;">
+        <img src="${logoUrl}" alt="Anjani Crop Care" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;" onerror="this.onerror=null; this.src=window.location.pathname.includes('/pages/') ? '../assets/images/sk-logo.jpg' : './assets/images/sk-logo.jpg';">
       </div>
       <span>Anjani ERP</span>
     </div>
@@ -220,7 +225,8 @@ function applySidebarStateFallback() {
 function injectLayout(title, breadcrumb) {
   const layout = document.getElementById('app-layout');
   if (!layout) return;
-  layout.insertAdjacentHTML('afterbegin', SIDEBAR_HTML + TOPBAR_HTML(title, breadcrumb) + BOTTOM_NAV_HTML);
+  const logoUrl = getLogoUrl();
+  layout.insertAdjacentHTML('afterbegin', SIDEBAR_HTML(logoUrl) + TOPBAR_HTML(title, breadcrumb, logoUrl) + BOTTOM_NAV_HTML);
   ensureSingletonMarkup('confirm-modal', CONFIRM_MODAL);
   ensureSingletonMarkup('profile-modal', PROFILE_MODAL);
   ensureSingletonMarkup('toast-container', '<div id="toast-container"></div>');

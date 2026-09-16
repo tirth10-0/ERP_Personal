@@ -886,7 +886,7 @@ app.get('*', (req, res, next) => {
 // Start Server
 app.listen(PORT, async () => {
   console.log(`\n========================================================================`);
-  console.log(`SK Agro Chemicals Invoice Server listening on http://localhost:${PORT}`);
+  console.log(`Anjani Crop Care Invoice Server listening on http://localhost:${PORT}`);
   console.log(`Serving static files from: ${path.resolve(__dirname)}`);
   console.log(`========================================================================\n`);
   

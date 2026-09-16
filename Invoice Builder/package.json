@@ -1,7 +1,7 @@
 {
   "name": "invoice-builder",
   "version": "1.1.0",
-  "description": "Invoice Builder Backend for SK Agro Chemicals",
+  "description": "Invoice Builder Backend for Anjani Crop Care",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

@@ -14,7 +14,12 @@ function updatePageDebug(text, color) {
   }
 }
 
+let itemBatchStockMap = {};
+
 function getLocalItemStock(id) {
+  if (itemBatchStockMap[id] !== undefined) {
+    return itemBatchStockMap[id];
+  }
   const it = inventoryItems.find(x => x.id == id);
   return it ? parseFloat(it.stock) || 0 : 0;
 }
@@ -141,6 +146,17 @@ async function loadDailyTransactions() {
 
     const { data: invData, error: invErr } = await window.dbClient.from('inventory_items').select('*');
     inventoryItems = invErr ? [] : invData || [];
+
+    // Query stock_batches to calculate exact total available stock for all inventory items
+    itemBatchStockMap = {};
+    const { data: batches } = await window.dbClient.from('stock_batches').select('item_id, current_qty').eq('item_type', 'Inventory');
+    if (batches) {
+      batches.forEach(b => {
+        const qty = parseFloat(b.current_qty) || 0;
+        itemBatchStockMap[b.item_id] = (itemBatchStockMap[b.item_id] || 0) + qty;
+      });
+    }
+
     populateCategorizedMaterialSelects();
     if (window.UTILS?.initAllAutocompleteSelects) {
       UTILS.initAllAutocompleteSelects();
@@ -543,6 +559,14 @@ async function adjustDailyInventoryStock(itemId, qtyDelta) {
         await window.dbClient.from('stock_batches').update({ current_qty: newQty }).eq('id', batches[0].id);
       }
     }
+
+    // Keep inventory_items.stock in sync
+    try {
+      const { data: bList } = await window.dbClient.from('stock_batches').select('current_qty').eq('item_id', itemId).eq('item_type', 'Inventory');
+      const newTotal = (bList || []).reduce((sum, b) => sum + (parseFloat(b.current_qty) || 0), 0);
+      await window.dbClient.from('inventory_items').update({ stock: newTotal }).eq('id', itemId);
+      itemBatchStockMap[itemId] = newTotal;
+    } catch (_) {}
   } catch (e) {
     console.warn('adjustDailyInventoryStock note:', e);
   }

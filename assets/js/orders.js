@@ -276,8 +276,10 @@ function renderOrderItemsDetailTable(data) {
 
 async function viewOrder(id) {
   try {
-    const { data: o, error: oErr } = await window.dbClient.from('orders').select('*, items:order_items(*)').eq('id', id).single();
+    const { data: o, error: oErr } = await window.dbClient.from('orders').select('*').eq('id', id).single();
     if (oErr) throw oErr;
+    const { data: itemsData } = await window.dbClient.from('order_items').select('*').eq('order_id', id);
+    o.items = itemsData || [];
 
     const balance = parseFloat(o.total_amount) - parseFloat(o.paid_amount || 0);
     let statusVal = o.status || 'Pending';
@@ -399,8 +401,10 @@ async function openEdit(id) {
   try {
     await populateClientSelect();
     
-    const { data: o, error: oErr } = await window.dbClient.from('orders').select('*, items:order_items(*)').eq('id', id).single();
+    const { data: o, error: oErr } = await window.dbClient.from('orders').select('*').eq('id', id).single();
     if (oErr) throw oErr;
+    const { data: itemsData } = await window.dbClient.from('order_items').select('*').eq('order_id', id);
+    o.items = itemsData || [];
 
     document.getElementById('modal-title').textContent = 'Edit Order';
     if (o.status === 'Delivered') {
@@ -941,72 +945,52 @@ async function saveOrder() {
       console.groupEnd();
 
       if (editingOrderId) {
-        const { error } = await window.dbClient.rpc('update_sales_txn', {
-          p_order_id: editingOrderId,
-          p_order_no: finalOrderNo || null,
-          p_client_id: d.client_id,
-          p_client_name: clientName,
-          p_date: d.date || UTILS.todayStr(),
-          p_due_date: d.due_date || null,
-          p_status: d.status || 'Pending',
-          p_total_amount: finalTotal,
-          p_paid_amount: paidAmount,
-          p_discount: discountPct,
-          p_tax: taxPct,
-          p_notes: d.notes || '',
-          p_items: orderItems.map(it => {
-            const packSizeMl = UTILS.parsePackSizeInMl(it.packaging_size) || 1000;
-            const volumeLiters = packSizeMl / 1000;
-            return {
-              product_id: it.product_id,
-              product_name: it.product_name,
-              packaging_size: it.packaging_size || null,
-              quantity: parseFloat(it.quantity) || 0,
-              base_volume: volumeLiters * (parseFloat(it.quantity) || 0),
-              unit_price: parseFloat(it.unit_price) || 0,
-              total: parseFloat(it.total) || 0,
-              inventory_item_id: it.inventory_item_id || null,
-              bottle_inventory_id: it.bottle_inventory_id || null
-            };
-          })
-        });
-        if (error) throw error;
+        // 1. Revert previous stock before applying new order edits
+        await revertOrderStock(editingOrderId);
+
+        // 2. Update order row
+        const updateData = {
+          order_no: finalOrderNo || null,
+          client_id: parseInt(d.client_id, 10),
+          client_name: clientName,
+          date: d.date || UTILS.todayStr(),
+          due_date: d.due_date || null,
+          status: d.status || 'Pending',
+          total_amount: finalTotal,
+          paid_amount: paidAmount,
+          discount: discountPct,
+          tax: taxPct,
+          notes: d.notes || ''
+        };
+        const { error: updErr } = await window.dbClient.from('orders').update(updateData).eq('id', editingOrderId);
+        if (updErr) throw updErr;
+
+        // 3. Delete existing items
+        await window.dbClient.from('order_items').delete().eq('order_id', editingOrderId);
+
+        // 4. Insert new items and deduct stock
+        await insertOrderItemsAndSyncStock(editingOrderId, orderItems, finalOrderNo || String(editingOrderId));
       } else {
-        const { error } = await window.dbClient.rpc('place_sales_order_v2', {
-          p_order_no: finalOrderNo || null,
-          p_client_id: d.client_id,
-          p_client_name: clientName,
-          p_date: d.date || UTILS.todayStr(),
-          p_due_date: d.due_date || null,
-          p_status: d.status || 'Pending',
-          p_total_amount: finalTotal,
-          p_paid_amount: paidAmount,
-          p_discount: discountPct,
-          p_tax: taxPct,
-          p_notes: d.notes || '',
-          p_items: orderItems.map(it => {
-            const packSizeMl = UTILS.parsePackSizeInMl(it.packaging_size) || 1000;
-            const volumeLiters = packSizeMl / 1000;
-            return {
-              product_id: it.product_id,
-              product_name: it.product_name,
-              packaging_size: it.packaging_size || null,
-              quantity: parseFloat(it.quantity) || 0,
-              base_volume: volumeLiters * (parseFloat(it.quantity) || 0),
-              unit_price: parseFloat(it.unit_price) || 0,
-              total: parseFloat(it.total) || 0,
-              inventory_item_id: it.inventory_item_id || null,
-              bottle_inventory_id: it.bottle_inventory_id || null
-            };
-          })
-        });
-        if (error) {
-           if (error.message && (error.message.includes('INSUFFICIENT_STOCK') || error.message.includes('Insufficient stock'))) {
-             const cleanMsg = error.message.replace('INSUFFICIENT_STOCK:', '').trim();
-             throw new Error(cleanMsg);
-           }
-           throw error;
-        }
+        // 1. Insert new order
+        const insertData = {
+          order_no: finalOrderNo || null,
+          client_id: parseInt(d.client_id, 10),
+          client_name: clientName,
+          date: d.date || UTILS.todayStr(),
+          due_date: d.due_date || null,
+          status: d.status || 'Pending',
+          total_amount: finalTotal,
+          paid_amount: paidAmount,
+          discount: discountPct,
+          tax: taxPct,
+          notes: d.notes || ''
+        };
+        const { data: newOrderData, error: insErr } = await window.dbClient.from('orders').insert([insertData]).select();
+        if (insErr) throw insErr;
+        const newOrderId = newOrderData[0].id;
+
+        // 2. Insert items and deduct stock
+        await insertOrderItemsAndSyncStock(newOrderId, orderItems, finalOrderNo || String(newOrderId));
       }
 
       APP.closeModal('order-modal');
@@ -1023,13 +1007,238 @@ async function saveOrder() {
   }
 }
 
+async function revertOrderStock(orderId) {
+  try {
+    const { data: items, error: itErr } = await window.dbClient.from('order_items').select('*').eq('order_id', orderId);
+    if (itErr || !items || !items.length) return;
+
+    for (const it of items) {
+      const qty = parseFloat(it.quantity) || 0;
+      const packMl = UTILS.parsePackSizeInMl(it.packing_size || it.packaging_size) || 1000;
+      const volumeLiters = (packMl / 1000) * qty;
+
+      // Restore bottle stock if bottle used
+      if (it.bottle_inventory_id) {
+        const bottleId = parseInt(it.bottle_inventory_id, 10);
+        const { data: bBatches } = await window.dbClient.from('stock_batches')
+          .select('id, current_qty')
+          .eq('item_id', bottleId)
+          .eq('item_type', 'Inventory')
+          .order('id', { ascending: false })
+          .limit(1);
+
+        if (bBatches && bBatches.length > 0) {
+          const cur = parseFloat(bBatches[0].current_qty) || 0;
+          await window.dbClient.from('stock_batches').update({ current_qty: cur + qty }).eq('id', bBatches[0].id);
+        }
+        try {
+          const { data: invRow } = await window.dbClient.from('inventory_items').select('stock').eq('id', bottleId).single();
+          if (invRow) {
+            await window.dbClient.from('inventory_items').update({ stock: (parseFloat(invRow.stock) || 0) + qty }).eq('id', bottleId);
+          }
+        } catch (_) {}
+      }
+
+      // Check formulation ingredients
+      const { data: formulations } = await window.dbClient.from('formulations').select('*').eq('product_id', it.product_id).limit(1);
+      const formulation = formulations && formulations[0];
+
+      if (formulation && parseFloat(formulation.batch_size) > 0) {
+        const { data: ings } = await window.dbClient.from('formulation_ingredients').select('*').eq('formulation_id', formulation.id);
+        if (ings && ings.length > 0) {
+          for (const ing of ings) {
+            const ingQtyNeeded = (volumeLiters / parseFloat(formulation.batch_size)) * (parseFloat(ing.quantity) || 0);
+            const ingItemId = parseInt(ing.product_id, 10);
+
+            const { data: iBatches } = await window.dbClient.from('stock_batches')
+              .select('id, current_qty')
+              .eq('item_id', ingItemId)
+              .eq('item_type', 'Inventory')
+              .order('id', { ascending: false })
+              .limit(1);
+
+            if (iBatches && iBatches.length > 0) {
+              const cur = parseFloat(iBatches[0].current_qty) || 0;
+              await window.dbClient.from('stock_batches').update({ current_qty: cur + ingQtyNeeded }).eq('id', iBatches[0].id);
+            }
+            try {
+              const { data: invRow } = await window.dbClient.from('inventory_items').select('stock').eq('id', ingItemId).single();
+              if (invRow) {
+                await window.dbClient.from('inventory_items').update({ stock: (parseFloat(invRow.stock) || 0) + ingQtyNeeded }).eq('id', ingItemId);
+              }
+            } catch (_) {}
+          }
+        }
+      } else {
+        // Deduct/restore direct technical item if mapped
+        let techId = it.inventory_item_id;
+        if (!techId) {
+          const { data: pRow } = await window.dbClient.from('products').select('inventory_item_id').eq('id', it.product_id).single();
+          if (pRow && pRow.inventory_item_id) techId = pRow.inventory_item_id;
+        }
+
+        if (techId) {
+          const { data: tBatches } = await window.dbClient.from('stock_batches')
+            .select('id, current_qty')
+            .eq('item_id', techId)
+            .eq('item_type', 'Inventory')
+            .order('id', { ascending: false })
+            .limit(1);
+
+          if (tBatches && tBatches.length > 0) {
+            const cur = parseFloat(tBatches[0].current_qty) || 0;
+            await window.dbClient.from('stock_batches').update({ current_qty: cur + volumeLiters }).eq('id', tBatches[0].id);
+          }
+          try {
+            const { data: invRow } = await window.dbClient.from('inventory_items').select('stock').eq('id', techId).single();
+            if (invRow) {
+              await window.dbClient.from('inventory_items').update({ stock: (parseFloat(invRow.stock) || 0) + volumeLiters }).eq('id', techId);
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    // Clean old movements
+    try {
+      await window.dbClient.from('stock_movements').delete().eq('txn_id', orderId);
+    } catch (_) {}
+  } catch (err) {
+    console.warn('revertOrderStock notice:', err);
+  }
+}
+
+async function insertOrderItemsAndSyncStock(orderId, items, orderNo) {
+  for (const it of items) {
+    const qty = parseFloat(it.quantity) || 0;
+    const packMl = UTILS.parsePackSizeInMl(it.packaging_size) || 1000;
+    const volumeLiters = (packMl / 1000) * qty;
+
+    const itemRow = {
+      order_id: orderId,
+      product_id: it.product_id ? parseInt(it.product_id, 10) : null,
+      product_name: it.product_name,
+      packing_size: it.packaging_size || null,
+      bottle_inventory_id: it.bottle_inventory_id ? parseInt(it.bottle_inventory_id, 10) : null,
+      quantity: qty,
+      unit_price: parseFloat(it.unit_price) || 0,
+      discount: 0,
+      total: parseFloat(it.total) || 0
+    };
+    await window.dbClient.from('order_items').insert([itemRow]);
+
+    // 1. Deduct bottle stock if selected
+    if (it.bottle_inventory_id) {
+      const bottleId = parseInt(it.bottle_inventory_id, 10);
+      let remainingBottle = qty;
+      const { data: bBatches } = await window.dbClient.from('stock_batches')
+        .select('*')
+        .eq('item_id', bottleId)
+        .eq('item_type', 'Inventory')
+        .gt('current_qty', 0)
+        .order('id', { ascending: true });
+
+      if (bBatches && bBatches.length > 0) {
+        for (const batch of bBatches) {
+          if (remainingBottle <= 0) break;
+          const cur = parseFloat(batch.current_qty) || 0;
+          const deduct = Math.min(cur, remainingBottle);
+          await window.dbClient.from('stock_batches').update({ current_qty: Math.max(0, cur - deduct) }).eq('id', batch.id);
+          remainingBottle -= deduct;
+        }
+      }
+      try {
+        const { data: invRow } = await window.dbClient.from('inventory_items').select('stock').eq('id', bottleId).single();
+        if (invRow) {
+          await window.dbClient.from('inventory_items').update({ stock: Math.max(0, (parseFloat(invRow.stock) || 0) - qty) }).eq('id', bottleId);
+        }
+      } catch (_) {}
+    }
+
+    // 2. Deduct product / ingredients stock
+    const { data: formulations } = await window.dbClient.from('formulations').select('*').eq('product_id', it.product_id).limit(1);
+    const formulation = formulations && formulations[0];
+
+    if (formulation && parseFloat(formulation.batch_size) > 0) {
+      const { data: ings } = await window.dbClient.from('formulation_ingredients').select('*').eq('formulation_id', formulation.id);
+      if (ings && ings.length > 0) {
+        for (const ing of ings) {
+          const ingQtyNeeded = (volumeLiters / parseFloat(formulation.batch_size)) * (parseFloat(ing.quantity) || 0);
+          const ingItemId = parseInt(ing.product_id, 10);
+          let remainingIng = ingQtyNeeded;
+
+          const { data: iBatches } = await window.dbClient.from('stock_batches')
+            .select('*')
+            .eq('item_id', ingItemId)
+            .eq('item_type', 'Inventory')
+            .gt('current_qty', 0)
+            .order('id', { ascending: true });
+
+          if (iBatches && iBatches.length > 0) {
+            for (const batch of iBatches) {
+              if (remainingIng <= 0) break;
+              const cur = parseFloat(batch.current_qty) || 0;
+              const deduct = Math.min(cur, remainingIng);
+              await window.dbClient.from('stock_batches').update({ current_qty: Math.max(0, cur - deduct) }).eq('id', batch.id);
+              remainingIng -= deduct;
+            }
+          }
+          try {
+            const { data: invRow } = await window.dbClient.from('inventory_items').select('stock').eq('id', ingItemId).single();
+            if (invRow) {
+              await window.dbClient.from('inventory_items').update({ stock: Math.max(0, (parseFloat(invRow.stock) || 0) - ingQtyNeeded) }).eq('id', ingItemId);
+            }
+          } catch (_) {}
+        }
+      }
+    } else {
+      let techId = it.inventory_item_id;
+      if (!techId) {
+        const { data: pRow } = await window.dbClient.from('products').select('inventory_item_id').eq('id', it.product_id).single();
+        if (pRow && pRow.inventory_item_id) techId = pRow.inventory_item_id;
+      }
+
+      if (techId) {
+        let remainingTech = volumeLiters;
+        const { data: tBatches } = await window.dbClient.from('stock_batches')
+          .select('*')
+          .eq('item_id', techId)
+          .eq('item_type', 'Inventory')
+          .gt('current_qty', 0)
+          .order('id', { ascending: true });
+
+        if (tBatches && tBatches.length > 0) {
+          for (const batch of tBatches) {
+            if (remainingTech <= 0) break;
+            const cur = parseFloat(batch.current_qty) || 0;
+            const deduct = Math.min(cur, remainingTech);
+            await window.dbClient.from('stock_batches').update({ current_qty: Math.max(0, cur - deduct) }).eq('id', batch.id);
+            remainingTech -= deduct;
+          }
+        }
+        try {
+          const { data: invRow } = await window.dbClient.from('inventory_items').select('stock').eq('id', techId).single();
+          if (invRow) {
+            await window.dbClient.from('inventory_items').update({ stock: Math.max(0, (parseFloat(invRow.stock) || 0) - volumeLiters) }).eq('id', techId);
+          }
+        } catch (_) {}
+      }
+    }
+  }
+}
+
 async function deleteOrder(id) {
   APP.showConfirm('Delete this order and its items?', async () => {
     try {
-      const { error } = await window.dbClient.rpc('delete_sales_txn', { p_order_id: id });
+      // 1. Revert stock
+      await revertOrderStock(id);
+
+      // 2. Delete order items & order
+      await window.dbClient.from('order_items').delete().eq('order_id', id);
+      const { error } = await window.dbClient.from('orders').delete().eq('id', id);
       if (error) throw error;
       
-      APP.showToast('Order deleted!', 'success');
+      APP.showToast('Order deleted and stock restored!', 'success');
       setTimeout(() => loadOrders(), 100);
     } catch (err) {
       console.error(err);

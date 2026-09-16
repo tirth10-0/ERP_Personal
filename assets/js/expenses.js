@@ -1,4 +1,4 @@
-﻿/* assets/js/expenses.js */
+/* assets/js/expenses.js */
 let allExpenses = [], editingExpenseId = null, expChart = null;
 
 function updatePageDebug(text, color) {
@@ -150,33 +150,34 @@ function renderChart(data) {
   const values = Object.values(cats);
   const colors = ['#10B981','#7C3AED','#3B82F6','#EF4444','#F59E0B','#EC4899','#8B5CF6'];
   
-  if (labels.length === 0) {
-    labels.push('No Expenses');
-    values.push(0);
-  }
+  const hasData = labels.length > 0;
+  const chartLabels = hasData ? labels : ['No Expenses Recorded'];
+  const chartValues = hasData ? values : [1];
+  const chartColors = hasData ? colors.slice(0, labels.length) : ['rgba(255,255,255,0.08)'];
 
   expChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels,
+      labels: chartLabels,
       datasets: [{
-        data: values,
-        backgroundColor: colors.slice(0, labels.length),
+        data: chartValues,
+        backgroundColor: chartColors,
         borderWidth: 2,
         borderColor: 'rgba(255,255,255,0.05)',
-        hoverOffset: 6
+        hoverOffset: hasData ? 6 : 0
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: '65%',
+      cutout: '70%',
       plugins: {
         legend: {
           position: 'bottom',
           labels: { font: { family: 'Space Grotesk', size: 11 }, padding: 10, boxWidth: 12, color: 'var(--text-secondary)' }
         },
         tooltip: {
+          enabled: hasData,
           callbacks: {
             label: ctx => ` ${UTILS.fmtCurrency(ctx.parsed)}`
           }

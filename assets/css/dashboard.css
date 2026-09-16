@@ -7,8 +7,35 @@
   align-items: stretch;
 }
 
-.transaction-kpi-grid {
+/* For 2-card grids like Formulations */
+.kpi-grid:has(> :nth-child(2):last-child),
+.kpi-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* For 3-card grids like Expenses / Transactions */
+.kpi-grid:has(> :nth-child(3):last-child),
+.transaction-kpi-grid,
+.kpi-grid-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1024px) {
+  .kpi-grid,
+  .kpi-grid:has(> :nth-child(2):last-child),
+  .kpi-grid:has(> :nth-child(3):last-child),
+  .transaction-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .kpi-grid,
+  .kpi-grid:has(> :nth-child(2):last-child),
+  .kpi-grid:has(> :nth-child(3):last-child),
+  .transaction-kpi-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ─── CHART CARDS ─────────────────────────────────────── */

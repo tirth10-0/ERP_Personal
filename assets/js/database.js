@@ -1,7 +1,7 @@
 /* assets/js/database.js - Supabase Bridge Config */
 
-const supabaseUrl = 'https://uepuzyvdfyylztyecpug.supabase.co';
-const supabaseKey = 'sb_publishable__UaVFmqPrT2UVq_brpCeUQ_p4r63kcz';
+const supabaseUrl = 'https://jtbettizhwwqmuyofapm.supabase.co';
+const supabaseKey = 'sb_publishable_kSf8e6RD96lT40di2YqxxQ_gJ3WS6ve';
 
 // In a non-module environment using the CDN, supabase is available on window.supabase
 if (window.supabase) {

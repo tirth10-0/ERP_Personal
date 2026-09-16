@@ -14,19 +14,27 @@ if ('serviceWorker' in navigator) {
 
 // Global Auth check
 (function() {
+  const pathname = window.location.pathname;
+  const isLoginPage = pathname.includes('login.html');
+  const isPagesDir = pathname.includes('/pages/');
+  const loginUrl = isPagesDir ? '../login.html' : './login.html';
+
+  // If already authenticated via local session flag, bypass strict Supabase token requirement
+  const localAuth = localStorage.getItem('admin_logged_in') === 'true';
+
   if (window.dbClient && window.dbClient.auth) {
     window.dbClient.auth.getSession().then(({ data: { session } }) => {
-      const pathname = window.location.pathname;
-      if (!session && !pathname.includes('login.html')) {
-        window.location.replace('/login.html');
+      if (!session && !localAuth && !isLoginPage) {
+        window.location.replace(loginUrl);
       }
     }).catch(err => {
       console.warn('Auth check error:', err);
-      const pathname = window.location.pathname;
-      if (!pathname.includes('login.html')) {
-        window.location.replace('/login.html');
+      if (!localAuth && !isLoginPage) {
+        window.location.replace(loginUrl);
       }
     });
+  } else if (!localAuth && !isLoginPage) {
+    window.location.replace(loginUrl);
   }
 })();
 
@@ -314,20 +322,22 @@ function openUserProfile() {
 function handleLogout() {
   closeUserDropdown();
   showConfirm('Log out and return to the welcome screen?', async () => {
+    localStorage.removeItem('admin_logged_in');
+    localStorage.removeItem('admin_user');
     try {
-      const { error } = await window.dbClient.auth.signOut();
-      if (error) {
-        showToast('Logout failed: ' + error.message, 'error');
-      } else {
-        showToast('Logged out successfully', 'success', 1800);
-        setTimeout(() => {
-          window.location.href = '../login.html';
-        }, 300);
+      if (window.dbClient && window.dbClient.auth) {
+        await window.dbClient.auth.signOut();
       }
     } catch (err) {
-      console.error('Logout error:', err);
-      showToast('Logout failed: ' + err.message, 'error');
+      console.warn('Logout signOut error:', err);
     }
+    showToast('Logged out successfully', 'success', 1800);
+    const pathname = window.location.pathname;
+    const isPagesDir = pathname.includes('/pages/');
+    const loginUrl = isPagesDir ? '../login.html' : './login.html';
+    setTimeout(() => {
+      window.location.replace(loginUrl);
+    }, 300);
   });
 }
 

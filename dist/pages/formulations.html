@@ -2,48 +2,51 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/jpeg" href="/assets/logo-Dj506C6u.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cyber-Agri Formulation System</title>
+    <title>Anjani Crop Care ERP - Formulations</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../assets/js/database.js?v=1789483482528"></script>
-    <script src="../assets/js/react-interceptor.js?v=1789483482528"></script>
-    <link rel="manifest" href="/assets/manifest-CSQTwS5U.json?v=1789483482528">
-    <meta name="theme-color" content="#10B981">
-
-  <link rel="manifest" href="/assets/manifest-CSQTwS5U.json?v=1789483482528"><meta name="theme-color" content="#10B981">  <script type="module" crossorigin src="/assets/formulations-BZZSyk_9.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/formulations-C2kyJcsu.css">
-  <link rel="stylesheet" crossorigin href="/assets/style-CcdlNZKb.css">
-  <link rel="stylesheet" crossorigin href="/assets/dashboard-yOFk2rSd.css">
-  <link rel="stylesheet" crossorigin href="/assets/tables-Bs5FDkSz.css">
-  <link rel="stylesheet" crossorigin href="/assets/responsive-DUcex0qT.css">
-</head>
+    <script src="../assets/js/database.js?v=1789539216064"></script>
+    <script src="../assets/js/react-interceptor.js?v=1789539216064"></script>
+    <link rel="manifest" href="/assets/manifest-CKQtQ5T_.json?v=1789539216064">
+    <meta name="theme-color" content="#10B981">
+    <script type="module" crossorigin src="/assets/formulations-C7zzsbAz.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/formulations-C2kyJcsu.css">
+    <link rel="stylesheet" crossorigin href="/assets/search-select-CytF2XZq.css">
+    <link rel="stylesheet" crossorigin href="/assets/dashboard-BF-wD9CV.css">
+  </head>
   <body>
   <div class="app-layout" id="app-layout">
-    <script src="../assets/js/shared-layout.js?v=1789483482528"></script>
+    <script src="../assets/js/shared-layout.js?v=1789539216064"></script>
     <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        LAYOUT.injectLayout('Formulations', 'Transactions / Formulations');
-        
-        // Highlight active navigation menu item
-        const path = window.location.pathname.split('/').pop() || 'dashboard.html';
-        document.querySelectorAll('.nav-item').forEach(item => {
-          const href = item.getAttribute('href') || '';
-          item.classList.toggle('active', href === path);
-        });
-      });
+      function initFormulationsLayout() {
+        if (window.LAYOUT && typeof window.LAYOUT.injectLayout === 'function') {
+          LAYOUT.injectLayout('Formulations', 'Operations / Formulations');
+          const path = window.location.pathname.split('/').pop() || 'dashboard.html';
+          document.querySelectorAll('.nav-item').forEach(item => {
+            const href = item.getAttribute('href') || '';
+            item.classList.toggle('active', href === path);
+          });
+        }
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initFormulationsLayout);
+      } else {
+        initFormulationsLayout();
+      }
     </script>
     <main class="main-content" id="main-content">
       <div class="page-body">
   
     <div id="root"></div>
 
-  
       </div>
     </main>
   </div>
+  <script src="../assets/js/utils.js?v=1789539216064"></script>
+  <script src="../assets/js/app.js?v=1789539216064"></script>
   </body>
 </html>

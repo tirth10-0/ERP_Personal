@@ -16,7 +16,7 @@ const SIDEBAR_HTML = (logoUrl = getLogoUrl()) => `
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="sidebar-logo">
-      <img src="${logoUrl}" alt="Anjani Crop Care" onerror="this.onerror=null; this.src=window.location.pathname.includes('/pages/') ? '../assets/images/sk-logo.jpg' : './assets/images/sk-logo.jpg';">
+      <img src="${logoUrl}" alt="Anjani Crop Care">
     </div>
     <div class="sidebar-brand"><h1>Anjani ERP</h1><span>Crop Care Management</span></div>
     <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" type="button" aria-label="Toggle sidebar" title="Toggle sidebar">
@@ -44,13 +44,13 @@ const SIDEBAR_HTML = (logoUrl = getLogoUrl()) => `
     <a href="transactions.html" class="nav-item" data-page="transactions.html" data-tooltip="Cash & Bank Ledger"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span><span class="nav-label">Cash & Bank Ledger</span></a>
     <a href="expenses.html" class="nav-item" data-page="expenses.html" data-tooltip="Expenses"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></span><span class="nav-label">Expenses</span></a>
     <a href="reports.html" class="nav-item" data-page="reports.html" data-tooltip="Business Reports"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="nav-label">Business Reports</span></a>
-  </nav>
-  <div class="sidebar-footer">
-    <a href="exports.html" class="nav-item sidebar-footer-item" data-page="exports.html" data-tooltip="Data Backup & Exports">
+
+    <div class="nav-section-label">System & Tools</div>
+    <a href="exports.html" class="nav-item" data-page="exports.html" data-tooltip="Data Backup & Exports">
       <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
       <span class="nav-label">Data Backup & Exports</span>
     </a>
-  </div>
+  </nav>
 </aside>
 <div class="sidebar-overlay" id="sidebar-overlay"></div>`;
 
@@ -62,7 +62,7 @@ const TOPBAR_HTML = (title, breadcrumb, logoUrl = getLogoUrl()) => `
     </button>
     <div class="topbar-mobile-brand">
       <div class="topbar-logo" style="padding: 1px;">
-        <img src="${logoUrl}" alt="Anjani Crop Care" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;" onerror="this.onerror=null; this.src=window.location.pathname.includes('/pages/') ? '../assets/images/sk-logo.jpg' : './assets/images/sk-logo.jpg';">
+        <img src="${logoUrl}" alt="Anjani Crop Care" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;">
       </div>
       <span>Anjani ERP</span>
     </div>
@@ -168,7 +168,7 @@ const BOTTOM_NAV_HTML = `
     <span class="bottom-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span>
     <span class="bottom-nav-label">Orders</span>
   </a>
-  <button type="button" class="bottom-nav-item" onclick="toggleSidebar()">
+  <button type="button" class="bottom-nav-item" onclick="toggleSidebar(event)">
     <span class="bottom-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg></span>
     <span class="bottom-nav-label">More</span>
   </button>
@@ -222,6 +222,32 @@ function applySidebarStateFallback() {
   }
 }
 
+window.toggleSidebar = function(e) {
+  if (e) {
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.preventDefault) e.preventDefault();
+  }
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (!sidebar) return;
+  if (window.innerWidth <= 768) {
+    const isOpen = sidebar.classList.toggle('mobile-open');
+    if (overlay) overlay.classList.toggle('active', isOpen);
+    document.body.classList.toggle('sidebar-mobile-open', isOpen);
+  } else {
+    sidebar.classList.remove('collapsed');
+    sidebar.classList.add('pinned');
+  }
+};
+
+window.closeSidebar = function() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (sidebar) sidebar.classList.remove('mobile-open');
+  if (overlay) overlay.classList.remove('active');
+  document.body.classList.remove('sidebar-mobile-open');
+};
+
 function injectLayout(title, breadcrumb) {
   const layout = document.getElementById('app-layout');
   if (!layout) return;
@@ -270,6 +296,19 @@ function injectLayout(title, breadcrumb) {
     reattachLayoutEvents();
   }
   
+  // Ensure overlay and sidebar navigation links close the drawer on mobile
+  const overlay = document.getElementById('sidebar-overlay');
+  if (overlay) {
+    overlay.onclick = window.closeSidebar;
+  }
+  document.querySelectorAll('.sidebar .nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth <= 768) {
+        window.closeSidebar();
+      }
+    });
+  });
+
   // Setup PWA install button handler
   setupPwaInstallButton();
 }

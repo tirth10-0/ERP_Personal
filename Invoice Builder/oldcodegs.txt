@@ -1,12 +1,12 @@
 /**
- * SK Agro Chemicals — SECURE Invoice Backend System
+ * Anjani Crop Care — SECURE Invoice Backend System
  * Features: API Token Auth, Formula Injection Prevention, Type Safety, Delete Enabled
  */
 
 const SHEET_NAME = 'InvoiceHistory';
 // 🔒 SECURITY MEASURE 1: API Secret Token
 // This must match exactly with the token in your frontend api.js
-const API_SECRET = 'sk_agro_secure_key_2026'; 
+const API_SECRET = 'anjani_crop_care_secure_key_2026'; 
 
 function doPost(e) {
   try {

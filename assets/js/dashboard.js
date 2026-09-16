@@ -74,7 +74,42 @@ async function loadDashboard() {
     const kpiExpenses = document.getElementById('kpi-expenses');
     if (kpiExpenses) kpiExpenses.textContent = UTILS.fmtCurrency(totalExpenses);
 
-    // 5. Recent Orders
+    // 5. Monthly Revenue & Purchase Chart
+    try {
+      const { data: allOrders } = await window.dbClient.from('orders').select('date, total_amount, status');
+      const { data: allPurchases } = await window.dbClient.from('purchases').select('date, total_amount');
+      
+      const monthlyRev = new Array(12).fill(0);
+      const monthlyPur = new Array(12).fill(0);
+      const currentYear = new Date().getFullYear();
+
+      (allOrders || []).forEach(o => {
+        if (o.date) {
+          const d = new Date(o.date);
+          if (d.getFullYear() === currentYear) {
+            const m = d.getMonth();
+            monthlyRev[m] += (parseFloat(o.total_amount) || 0);
+          }
+        }
+      });
+
+      (allPurchases || []).forEach(p => {
+        if (p.date) {
+          const d = new Date(p.date);
+          if (d.getFullYear() === currentYear) {
+            const m = d.getMonth();
+            monthlyPur[m] += (parseFloat(p.total_amount) || 0);
+          }
+        }
+      });
+
+      renderRevenueChart(monthlyRev, monthlyPur);
+    } catch (e) {
+      console.warn('Chart data note:', e);
+      renderRevenueChart(new Array(12).fill(0), new Array(12).fill(0));
+    }
+
+    // 6. Recent Orders
     try {
       const { data: recentActivities, error: recErr } = await window.dbClient.from('orders')
         .select('order_no, client_name, date, total_amount, status')
@@ -156,7 +191,7 @@ function renderDashboardSkeleton() {
   UTILS.renderListSkeleton('stock-alerts-list', 4);
 }
 
-function renderRevenueChart(data) {
+function renderRevenueChart(revenueData, purchasesData = []) {
   const ctx = document.getElementById('revenue-chart');
   if (!ctx) return;
   
@@ -164,12 +199,67 @@ function renderRevenueChart(data) {
   const labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   
   revenueChart = new Chart(ctx, {
-    type: 'bar',
+    type: 'line',
     data: {
       labels,
-      datasets: [{ label: 'Revenue (₹)', data, backgroundColor: 'rgba(124,58,237,0.15)', borderColor: '#7C3AED', borderWidth: 2, borderRadius: 8 }]
+      datasets: [
+        {
+          label: 'Sales Revenue (₹)',
+          data: revenueData,
+          borderColor: '#10B981',
+          backgroundColor: 'rgba(16,185,129,0.12)',
+          borderWidth: 2.5,
+          fill: true,
+          tension: 0.35,
+          pointBackgroundColor: '#10B981',
+          pointRadius: 3.5
+        },
+        {
+          label: 'Purchases (₹)',
+          data: purchasesData,
+          borderColor: '#F59E0B',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          fill: false,
+          tension: 0.35,
+          pointBackgroundColor: '#F59E0B',
+          pointRadius: 3
+        }
+      ]
     },
-    options: { responsive: true, plugins: { legend: { display: false } } }
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: { font: { family: 'Space Grotesk', size: 11 }, boxWidth: 10, padding: 8, color: 'var(--text-secondary)' }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${UTILS.fmtCurrency(ctx.parsed.y)}`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: v => '₹' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v),
+            font: { family: 'Space Grotesk', size: 10 },
+            color: 'var(--text-muted)'
+          },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        x: {
+          ticks: { font: { family: 'Space Grotesk', size: 10 }, color: 'var(--text-muted)' },
+          grid: { display: false }
+        }
+      }
+    }
   });
 }
 

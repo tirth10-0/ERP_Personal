@@ -525,3 +525,22 @@
   min-width: 56px;
   text-align: center;
 }
+
+/* ─── COMPACT ORDER ITEMS DETAIL TABLE ────────────────── */
+#order-items-detail-table {
+  font-size: 12.5px;
+  table-layout: auto;
+  width: 100%;
+}
+
+#order-items-detail-table th {
+  padding: 10px 10px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+#order-items-detail-table td {
+  padding: 8px 10px;
+}
+

@@ -99,7 +99,7 @@ async function buildDetailedOrderItems() {
           status: o.status,
           product_name: it.product_name,
           product_id: it.product_id,
-          packaging_size: it.packaging_size,
+          packaging_size: it.packaging_size || it.packing_size || '',
           quantity: it.quantity,
           unit_price: it.unit_price,
           total: it.total
@@ -236,32 +236,32 @@ function renderOrderItemsDetailTable(data) {
       
       // Distinct bottom border separating different order blocks vs inner item rows
       const borderStyle = isLastRow 
-        ? 'border-bottom: 3px solid rgba(16, 185, 129, 0.4);' 
-        : 'border-bottom: 1px dashed rgba(255, 255, 255, 0.12);';
+        ? 'border-bottom: 2px solid rgba(16, 185, 129, 0.35);' 
+        : 'border-bottom: 1px dashed rgba(255, 255, 255, 0.08);';
 
       const packSizeStr = getPackSizeStr(it);
 
       rowsHtml += `<tr style="${blockBg} ${borderStyle}">`;
       if (isFirstRow) {
         rowsHtml += `
-          <td class="cell-bold"${rowSpanAttr} style="vertical-align:middle; padding: 14px 16px; font-weight:700; font-size:14px;">${first.order_no}</td>
-          <td${rowSpanAttr} style="vertical-align:middle; padding: 14px 16px;">${first.client_display || '—'}</td>
-          <td${rowSpanAttr} style="vertical-align:middle; padding: 14px 16px;">${UTILS.fmtDate(first.date)}</td>
+          <td class="cell-bold"${rowSpanAttr} style="vertical-align:middle; padding: 8px 10px; font-weight:700; font-size:12.5px; white-space:nowrap;">${first.order_no}</td>
+          <td${rowSpanAttr} style="vertical-align:middle; padding: 8px 10px; font-size:12.5px; white-space:nowrap;">${first.client_display || '—'}</td>
+          <td${rowSpanAttr} style="vertical-align:middle; padding: 8px 10px; font-size:12px; white-space:nowrap;">${UTILS.fmtDate(first.date)}</td>
         `;
       }
       rowsHtml += `
-        <td style="font-weight:600; color:var(--primary); padding: 12px 16px;">${it.product_name || '—'}</td>
-        <td style="padding: 12px 16px;"><span class="badge badge-neutral">${packSizeStr}</span></td>
-        <td style="padding: 12px 16px;">${it.quantity}</td>
-        <td class="cell-amount" style="padding: 12px 16px;">${UTILS.fmtCurrency(it.unit_price)}</td>
-        <td class="cell-amount" style="font-weight:700; padding: 12px 16px;">${UTILS.fmtCurrency(it.total)}</td>
+        <td style="font-weight:600; color:var(--primary); padding: 8px 10px; font-size:12.5px;">${it.product_name || '—'}</td>
+        <td style="padding: 8px 10px; font-size:12px; white-space:nowrap;"><span class="badge badge-neutral" style="padding: 2px 7px; font-size:11px;">${packSizeStr}</span></td>
+        <td style="padding: 8px 10px; font-size:12.5px; font-weight:600; white-space:nowrap;">${it.quantity}</td>
+        <td class="cell-amount" style="padding: 8px 10px; font-size:12.5px; white-space:nowrap;">${UTILS.fmtCurrency(it.unit_price)}</td>
+        <td class="cell-amount" style="font-weight:700; padding: 8px 10px; font-size:12.5px; white-space:nowrap;">${UTILS.fmtCurrency(it.total)}</td>
       `;
       if (isFirstRow) {
         rowsHtml += `
-          <td${rowSpanAttr} style="vertical-align:middle; padding: 14px 16px;">${statusBadge}</td>
-          <td${rowSpanAttr} style="vertical-align:middle; padding: 14px 16px;"><div class="row-actions">
-            <button class="action-btn view" onclick="viewOrder(${first.order_id})" title="View Order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-            <button class="action-btn edit" onclick="openEdit(${first.order_id})" title="Edit Order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <td${rowSpanAttr} style="vertical-align:middle; padding: 8px 10px; white-space:nowrap;">${statusBadge}</td>
+          <td${rowSpanAttr} style="vertical-align:middle; padding: 8px 10px; text-align:center; white-space:nowrap;"><div class="row-actions" style="gap:5px; justify-content:center;">
+            <button class="action-btn view" onclick="viewOrder(${first.order_id})" title="View Order" style="min-width:30px; width:30px; height:30px; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            <button class="action-btn edit" onclick="openEdit(${first.order_id})" title="Edit Order" style="min-width:30px; width:30px; height:30px; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
           </div></td>
         `;
       }
@@ -415,11 +415,11 @@ async function openEdit(id) {
     const toggle = document.getElementById('auto-discount-toggle');
     if (toggle) toggle.checked = false;
     handleAutoDiscount();
-    orderItems = o.items || [];
-    
-    orderItems.forEach(item => {
-      item.total = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
-    });
+    orderItems = (o.items || []).map(item => ({
+      ...item,
+      packaging_size: item.packaging_size || item.packing_size || '',
+      total: (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)
+    }));
 
     // Restore GST type selector from stored tax %
     const taxVal = parseFloat(o.tax) || 0;
@@ -521,17 +521,31 @@ async function renderOrderItems() {
       let pkgSelectHtml = '';
       if (pkgOptions.length > 0) {
         const itemNormPack = item.packaging_size ? String(item.packaging_size).toLowerCase().replace(/\s+/g, '') : '';
-        let hasMatchedSel = false;
-        const optionsStr = pkgOptions.map(opt => {
+        
+        // First check if any option matches item.packaging_size
+        let matchedIndex = -1;
+        if (itemNormPack) {
+          matchedIndex = pkgOptions.findIndex(opt => {
+            const rawSize = opt.packaging_size || opt.size || '';
+            const sizeLabel = cleanSizeLabel(rawSize, unitStr);
+            const optNorm = String(sizeLabel).toLowerCase().replace(/\s+/g, '');
+            const rawNorm = String(rawSize).toLowerCase().replace(/\s+/g, '');
+            return optNorm === itemNormPack || rawNorm === itemNormPack;
+          });
+        }
+
+        const optionsStr = pkgOptions.map((opt, oIdx) => {
           const rawSize = opt.packaging_size || opt.size || '';
           const sizeLabel = cleanSizeLabel(rawSize, unitStr);
           const priceVal = parseFloat(opt.sell_price || opt.selling_price) || 0;
-          const optNorm = String(sizeLabel).toLowerCase().replace(/\s+/g, '');
-          const rawNorm = String(rawSize).toLowerCase().replace(/\s+/g, '');
-          const isSel = itemNormPack 
-            ? (optNorm === itemNormPack || rawNorm === itemNormPack)
-            : (opt.is_base || opt === pkgOptions[0]);
-          if (isSel) hasMatchedSel = true;
+          
+          let isSel = false;
+          if (matchedIndex !== -1) {
+            isSel = (oIdx === matchedIndex);
+          } else if (!itemNormPack) {
+            isSel = (opt.is_base || oIdx === 0);
+          }
+
           return `<option value="${sizeLabel}" data-price="${priceVal}" ${isSel ? 'selected' : ''}>${sizeLabel}</option>`;
         }).join('');
 

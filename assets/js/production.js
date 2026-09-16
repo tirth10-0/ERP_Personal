@@ -18,13 +18,25 @@ async function loadData() {
     const { data: invData } = await window.dbClient.from('inventory_items').select('id, name, unit');
     cachedInventory = invData || [];
     
-    // Fetch Production Batches (Checking formulations table which stores manufacturing production batches)
+    // Fetch Formulations and Ingredients separately to avoid PGRST200 missing FK relationship
     let prodBatches = [];
     const { data: fData, error: fError } = await window.dbClient.from('formulations')
-      .select('*, formulation_ingredients(*)')
-      .order('date', { ascending: false });
+      .select('*')
+      .order('id', { ascending: false });
       
     if (!fError && fData) {
+      const { data: allIngs } = await window.dbClient.from('formulation_ingredients').select('*');
+      const ingsByFormId = {};
+      (allIngs || []).forEach(ing => {
+        if (!ingsByFormId[ing.formulation_id]) ingsByFormId[ing.formulation_id] = [];
+        ingsByFormId[ing.formulation_id].push({
+          id: ing.id,
+          inventory_id: ing.product_id,
+          quantity_used: ing.quantity || 0,
+          unit: ing.unit || 'Kg'
+        });
+      });
+
       prodBatches = fData.map(f => ({
         id: f.id,
         batch_no: f.batch_no,
@@ -34,30 +46,18 @@ async function loadData() {
         date: f.date,
         quantity_produced: f.batch_size || f.total_quantity || 0,
         notes: f.notes,
-        production_ingredients: (f.formulation_ingredients || []).map(ing => ({
-          id: ing.id,
-          inventory_id: ing.product_id,
-          quantity_used: ing.quantity || 0
-        }))
+        production_ingredients: ingsByFormId[f.id] || []
       }));
-    } else {
-      // Fallback try production_batches if table exists
-      const { data: pbData, error: pbErr } = await window.dbClient.from('production_batches')
-        .select('*, production_ingredients(*)')
-        .order('date', { ascending: false });
-      if (!pbErr && pbData) {
-        prodBatches = pbData;
-      }
     }
     
-    allProductions = (prodBatches || []).sort((a, b) => (a.batch_no || '').localeCompare(b.batch_no || '', undefined, { numeric: true, sensitivity: 'base' }));
+    allProductions = (prodBatches || []).sort((a, b) => (b.id || 0) - (a.id || 0));
     
     populateProductSelect();
     renderTable(allProductions);
     updatePageDebug('Ready (' + allProductions.length + ')', '#10B981');
   } catch (err) {
     console.error('loadData failed:', err);
-    updatePageDebug('Ready (0)', '#10B981');
+    updatePageDebug('Error (' + err.message + ')', '#EF4444');
     renderTable([]);
   }
 }
@@ -325,6 +325,78 @@ async function saveProduction() {
       });
       const { error: ingErr } = await window.dbClient.from('formulation_ingredients').insert(ingPayload);
       if (ingErr) throw ingErr;
+
+      // Sync Inventory Stock Batches
+      for (const line of validLines) {
+        const itemId = parseInt(line.inventory_id, 10);
+        const invObj = cachedInventory.find(i => i.id == itemId);
+        const qty = parseFloat(line.quantity) || 0;
+        const isIncrease = (line.action === 'INCREASE');
+
+        if (isIncrease) {
+          // Add/increase inventory batch
+          const prodBatchPayload = {
+            item_id: itemId,
+            item_name: invObj ? invObj.name : 'Produced Good',
+            item_type: 'Inventory',
+            batch_no: finalBatchNo || 'BATCH-01',
+            initial_qty: qty,
+            current_qty: qty,
+            unit: line.unit || (invObj ? invObj.unit : 'Kg'),
+            purchase_date: d.date || UTILS.todayStr(),
+            purchase_price: 0
+          };
+          await window.dbClient.from('stock_batches').insert([prodBatchPayload]);
+
+          // Optional stock_movements record
+          try {
+            await window.dbClient.from('stock_movements').insert([{
+              item_id: itemId,
+              item_name: invObj ? invObj.name : '',
+              movement_type: 'IN',
+              quantity: qty,
+              unit: line.unit || (invObj ? invObj.unit : 'Kg'),
+              reference: finalBatchNo,
+              notes: `Production output for ${payload.product_name}`,
+              created_at: new Date().toISOString()
+            }]);
+          } catch (_) {}
+        } else {
+          // DECREASE: Deduct from available stock_batches (FIFO)
+          let remainingToDeduct = qty;
+          const { data: batches } = await window.dbClient.from('stock_batches')
+            .select('*')
+            .eq('item_id', itemId)
+            .eq('item_type', 'Inventory')
+            .gt('current_qty', 0)
+            .order('id', { ascending: true });
+
+          if (batches && batches.length > 0) {
+            for (const batch of batches) {
+              if (remainingToDeduct <= 0) break;
+              const cur = parseFloat(batch.current_qty) || 0;
+              const deduct = Math.min(cur, remainingToDeduct);
+              const newQty = Math.max(0, cur - deduct);
+              await window.dbClient.from('stock_batches').update({ current_qty: newQty }).eq('id', batch.id);
+              remainingToDeduct -= deduct;
+            }
+          }
+
+          // Optional stock_movements record
+          try {
+            await window.dbClient.from('stock_movements').insert([{
+              item_id: itemId,
+              item_name: invObj ? invObj.name : '',
+              movement_type: 'OUT',
+              quantity: qty,
+              unit: line.unit || (invObj ? invObj.unit : 'Kg'),
+              reference: finalBatchNo,
+              notes: `Consumed in production batch ${finalBatchNo}`,
+              created_at: new Date().toISOString()
+            }]);
+          } catch (_) {}
+        }
+      }
     }
     
     APP.showToast('Production batch saved successfully!', 'success');

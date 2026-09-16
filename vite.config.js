@@ -18,6 +18,7 @@ export default defineConfig({
         expenses: resolve(__dirname, 'pages/expenses.html'),
         reports: resolve(__dirname, 'pages/reports.html'),
         formulations: resolve(__dirname, 'pages/formulations.html'),
+        production: resolve(__dirname, 'pages/production.html'),
         daily_transactions: resolve(__dirname, 'pages/daily-transactions.html'),
         calculator: resolve(__dirname, 'pages/calculator.html'),
         batch_calculator: resolve(__dirname, 'pages/batch-calculator.html'),

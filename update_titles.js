@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 
 const pagesDir = path.join(__dirname, 'pages');
@@ -19,7 +19,7 @@ function processHtmlFile(filePath, isRoot) {
     content = content.replace(/<title>S K Agro Chemical.*?<\/title>/g, `<title>S K ERP</title>`);
     
     // Add favicon if not exists
-    const iconPath = isRoot ? './assets/images/sk-logo.jpg' : '../assets/images/sk-logo.jpg';
+    const iconPath = isRoot ? './assets/images/logo.jpg' : '../assets/images/logo.jpg';
     if (!content.includes('rel="icon"')) {
         content = content.replace('</head>', `\n  <link rel="icon" type="image/jpeg" href="${iconPath}">\n</head>`);
     }
@@ -51,3 +51,4 @@ if (fs.existsSync(manifestPath)) {
 }
 
 console.log('HTML titles, favicons, and manifest updated successfully.');
+

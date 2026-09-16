@@ -11,7 +11,7 @@ const SIDEBAR_HTML = `
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="sidebar-logo">
-      <img src="../assets/images/sk-logo.jpg" alt="Anjani Crop Care">
+      <img src="../assets/images/logo.jpg" alt="Anjani Crop Care">
     </div>
     <div class="sidebar-brand"><h1>Anjani ERP</h1><span>Crop Care Management</span></div>
     <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" type="button" aria-label="Toggle sidebar" title="Toggle sidebar">
@@ -57,7 +57,7 @@ const TOPBAR_HTML = (title, breadcrumb) => `
     </button>
     <div class="topbar-mobile-brand">
       <div class="topbar-logo" style="padding: 1px;">
-        <img src="../assets/images/sk-logo.jpg" alt="Anjani Crop Care" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;">
+        <img src="../assets/images/logo.jpg" alt="Anjani Crop Care" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;">
       </div>
       <span>Anjani ERP</span>
     </div>

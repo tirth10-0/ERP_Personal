@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "/",
   "name": "Anjani Crop Care ERP - Crop Care Management",
   "short_name": "Anjani ERP",
@@ -35,16 +35,17 @@
       "purpose": "maskable"
     },
     {
-      "src": "./assets/images/sk-logo.jpg",
+      "src": "./assets/images/logo.jpg",
       "sizes": "192x192",
       "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "./assets/images/sk-logo.jpg",
+      "src": "./assets/images/logo.jpg",
       "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "any"
     }
   ]
 }
+

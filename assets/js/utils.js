@@ -269,6 +269,39 @@ function sortPackSizesDescending(items, sizeGetter = (x => x.packaging_size || x
   });
 }
 
-window.UTILS = { fmtCurrency, fmtDate, fmtDateInput, todayStr, getTodayDateString, setDefaultDateValue, applyDefaultDateInputs, fmtNumber, fmtPercent, formatPhone, isPhoneFieldName, isGstinFieldName, normalizeTextValue, formatTitleCaseWithPercentRules, statusBadge, applyMobileTableLabels, renderTableSkeleton, setSkeletonText, renderListSkeleton, getFormData, populateForm, destroyChart, initAllAutocompleteSelects, normalizeUnit, convertUnit, parsePackSizeInMl, sortPackSizesDescending, exportToCSV, exportToExcel };
+function extractNumericPart(val) {
+  if (val === null || val === undefined) return -1;
+  if (typeof val === 'number') return val;
+  const str = String(val).trim();
+  // Find last contiguous digits in string, e.g. "O-10" -> 10, "DTXN-1001" -> 1001, "EXP-05" -> 5
+  const match = str.match(/(\d+)(?!.*\d)/);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    return isNaN(num) ? -1 : num;
+  }
+  return -1;
+}
+
+function sortByNumericIdDesc(items, getter = (x => x.order_no || x.purchase_no || x.txn_no || x.batch_no || x.ref_no || x.id)) {
+  return [...items].sort((a, b) => {
+    const rawA = getter ? getter(a) : a;
+    const rawB = getter ? getter(b) : b;
+    const numA = extractNumericPart(rawA);
+    const numB = extractNumericPart(rawB);
+
+    if (numA !== -1 && numB !== -1) {
+      if (numB !== numA) return numB - numA;
+    } else if (numB !== -1) {
+      return 1;
+    } else if (numA !== -1) {
+      return -1;
+    }
+
+    // Fallback if numbers are equal or non-numeric
+    return String(rawB || '').localeCompare(String(rawA || ''), undefined, { numeric: true, sensitivity: 'base' });
+  });
+}
+
+window.UTILS = { fmtCurrency, fmtDate, fmtDateInput, todayStr, getTodayDateString, setDefaultDateValue, applyDefaultDateInputs, fmtNumber, fmtPercent, formatPhone, isPhoneFieldName, isGstinFieldName, normalizeTextValue, formatTitleCaseWithPercentRules, statusBadge, applyMobileTableLabels, renderTableSkeleton, setSkeletonText, renderListSkeleton, getFormData, populateForm, destroyChart, initAllAutocompleteSelects, normalizeUnit, convertUnit, parsePackSizeInMl, sortPackSizesDescending, extractNumericPart, sortByNumericIdDesc, exportToCSV, exportToExcel };
   
 if ("serviceWorker" in navigator) { window.addEventListener("load", () => { navigator.serviceWorker.register("../sw.js").then(reg => console.log("SW registered")).catch(err => console.log("SW failed", err)); }); } 

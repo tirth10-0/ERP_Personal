@@ -140,7 +140,7 @@ function filterAndRender() {
         itemsText.includes(q);
     });
   }
-  filtered = [...filtered].sort((a, b) => (a.purchase_no || '').localeCompare(b.purchase_no || '', undefined, { numeric: true, sensitivity: 'base' }));
+  filtered = UTILS.sortByNumericIdDesc(filtered, p => p.purchase_no);
   renderTable(filtered);
 }
 

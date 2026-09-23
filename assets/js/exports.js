@@ -13,64 +13,51 @@ async function loadExports() {
 }
 
 async function fetchExportData(tableName, from, to) {
-  let data = [];
+  let query = window.dbClient.from(tableName).select('*');
   
-  // For transactional tables, if date ranges are provided, use the reports/summary endpoint which aggregates them.
-  if (from || to) {
-    if (['orders', 'daily_transactions', 'purchases', 'transactions', 'expenses'].includes(tableName)) {
-      const res = await fetch(`/api/reports/summary?from=${from || ''}&to=${to || ''}`);
-      if (!res.ok) throw new Error('Failed to fetch filtered records');
-      const result = await res.json();
-      const raw = result.raw || {};
-      
-      switch(tableName) {
-        case 'orders':             return raw.orders || [];
-        case 'daily_transactions': return raw.dailyTxns || [];
-        case 'purchases':          return raw.purchases || [];
-        case 'expenses':           return raw.expenses || [];
-        case 'transactions':       
-          // For transactions, let's fetch from the `/api/transactions` endpoint and filter client-side
-          // because the reports summary doesn't return raw ledger logs, it returns raw daily_transactions.
-          break;
-      }
-    }
+  // Date filters where supported
+  if (['orders', 'daily_transactions', 'purchases', 'transactions', 'expenses'].includes(tableName)) {
+    if (from) query = query.gte('date', from);
+    if (to) query = query.lte('date', to);
   }
-
-  // Fallback / Default fetches
-  let endpoint = '';
+  
+  const { data, error } = await query;
+  if (error) {
+    console.error(`Error fetching ${tableName}:`, error);
+    throw error;
+  }
+  
+  let records = data || [];
+  
+  // Apply numeric descending sort according to the numeric part of the record identifier
   switch(tableName) {
-    case 'clients':            endpoint = '/api/clients'; break;
-    case 'products':           endpoint = '/api/products'; break;
-    case 'orders':             endpoint = '/api/orders'; break;
-    case 'purchases':          endpoint = '/api/purchases'; break;
-    case 'transactions':       endpoint = '/api/transactions'; break;
-    case 'expenses':           endpoint = '/api/expenses'; break;
-    case 'suppliers':          endpoint = '/api/suppliers'; break;
-    case 'daily_transactions': endpoint = '/api/daily-transactions'; break;
+    case 'orders':
+      records = UTILS.sortByNumericIdDesc(records, o => o.order_no || o.id);
+      break;
+    case 'purchases':
+      records = UTILS.sortByNumericIdDesc(records, p => p.purchase_no || p.id);
+      break;
+    case 'daily_transactions':
+      records = UTILS.sortByNumericIdDesc(records, dt => dt.txn_no || dt.id);
+      break;
+    case 'transactions':
+      records = UTILS.sortByNumericIdDesc(records, t => {
+        if (t.notes && t.notes.startsWith('[Ref: ')) {
+          const m = t.notes.match(/^\[Ref:\s*([^\]]+)\]/);
+          if (m) return m[1];
+        }
+        return t.ref_id || t.id;
+      });
+      break;
+    case 'expenses':
+      records = UTILS.sortByNumericIdDesc(records, e => e.id);
+      break;
+    default:
+      records = UTILS.sortByNumericIdDesc(records, r => r.id);
+      break;
   }
-
-  if (!endpoint) return [];
-  const res = await fetch(endpoint);
-  if (!res.ok) throw new Error(`Failed to fetch data for ${tableName}`);
-  data = await res.json();
-
-  // Apply manual date filters client-side
-  if (from) {
-    data = data.filter(row => {
-      const dateVal = row.date || row.created_at;
-      if (!dateVal) return true;
-      return dateVal.slice(0, 10) >= from;
-    });
-  }
-  if (to) {
-    data = data.filter(row => {
-      const dateVal = row.date || row.created_at;
-      if (!dateVal) return true;
-      return dateVal.slice(0, 10) <= to;
-    });
-  }
-
-  return data;
+  
+  return records;
 }
 
 async function exportTable(tableName, label) {
@@ -98,10 +85,21 @@ async function exportTable(tableName, label) {
         cleanData = data.map(p => ({ id: p.id, purchase_no: p.purchase_no, supplier_name: p.supplier_name, date: p.date, status: p.status, total_amount: p.total_amount, paid_amount: p.paid_amount, notes: p.notes }));
         break;
       case 'transactions':
-        cleanData = data.map(t => ({ id: t.id, date: t.date, type: t.type, ref_no: t.ref_no, party_name: t.party_name, amount: t.amount, mode: t.mode, notes: t.notes }));
+        cleanData = data.map(t => {
+          let ref = '';
+          if (t.notes && t.notes.startsWith('[Ref: ')) {
+            const m = t.notes.match(/^\[Ref:\s*([^\]]+)\]/);
+            if (m) ref = m[1];
+          } else if (t.ref_id) {
+            ref = 'TXN-' + t.ref_id;
+          } else {
+            ref = 'TXN-' + t.id;
+          }
+          return { id: t.id, date: t.date, type: t.type, ref_no: ref, party_name: t.party_name, amount: t.amount, mode: t.mode, notes: t.notes };
+        });
         break;
       case 'expenses':
-        cleanData = data.map(e => ({ id: e.id, date: e.date, category: e.category, description: e.description, amount: e.amount, payment_mode: e.payment_mode }));
+        cleanData = data.map(e => ({ id: e.id, ref_no: 'EXP-' + String(e.id).padStart(3, '0'), date: e.date, category: e.category, description: e.notes || '', amount: e.amount, payment_mode: e.payment_mode }));
         break;
       case 'suppliers':
         cleanData = data.map(s => ({ id: s.id, name: s.name, contact: s.contact, email: s.email, city: s.city, gst: s.gst, category: s.category, payment_terms: s.payment_terms, balance: s.balance }));
@@ -295,16 +293,40 @@ async function bulkExportCSV() {
 async function downloadBackup() {
   try {
     APP.showSpinner();
-    // Directly redirect browser window to trigger file download attachment
-    window.location.href = '/api/database/backup/download';
-    setTimeout(() => {
-      APP.hideSpinner();
-      APP.showToast('Backup download initiated!', 'success');
-    }, 1500);
+    const tables = ['clients', 'suppliers', 'products', 'inventory_items', 'orders', 'order_items', 'purchases', 'purchase_items', 'transactions', 'accounts', 'expenses', 'daily_transactions', 'daily_transaction_items', 'formulations', 'formulation_ingredients'];
+    
+    const backupData = {
+      timestamp: new Date().toISOString(),
+      version: '1.0',
+      tables: {}
+    };
+
+    for (const t of tables) {
+      try {
+        const { data } = await window.dbClient.from(t).select('*');
+        backupData.tables[t] = data || [];
+      } catch (e) {
+        console.warn('Backup skip table', t, e);
+      }
+    }
+
+    const jsonStr = JSON.stringify(backupData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Anjani_ERP_Backup_${UTILS.todayStr()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    APP.showToast('Database backup downloaded successfully!', 'success');
   } catch (err) {
-    APP.hideSpinner();
     console.error('Backup download error:', err);
-    APP.showToast('Failed to download backup', 'error');
+    APP.showToast('Failed to download backup: ' + err.message, 'error');
+  } finally {
+    APP.hideSpinner();
   }
 }
 

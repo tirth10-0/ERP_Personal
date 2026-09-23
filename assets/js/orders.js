@@ -125,7 +125,7 @@ function applyFiltersAndRender() {
     if (q) {
       data = data.filter(o => `${o.order_no} ${o.client_display} ${o.date}`.toLowerCase().includes(q));
     }
-    data = [...data].sort((a, b) => (a.order_no || '').localeCompare(b.order_no || '', undefined, { numeric: true, sensitivity: 'base' }));
+    data = UTILS.sortByNumericIdDesc(data, o => o.order_no);
     renderTable(data);
   } else {
     const q = (document.getElementById('items-search-input')?.value || '').toLowerCase();
@@ -140,7 +140,7 @@ function applyFiltersAndRender() {
     if (q) {
       data = data.filter(it => `${it.order_no} ${it.client_display} ${it.product_name} ${it.date}`.toLowerCase().includes(q));
     }
-    data = [...data].sort((a, b) => (a.order_no || '').localeCompare(b.order_no || '', undefined, { numeric: true, sensitivity: 'base' }));
+    data = UTILS.sortByNumericIdDesc(data, it => it.order_no);
     renderOrderItemsDetailTable(data);
   }
 }

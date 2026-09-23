@@ -239,7 +239,7 @@ function filterTransactions(data) {
   const day = String(now.getDate()).padStart(2, '0');
   const localToday = `${year}-${month}-${day}`;
 
-  return data.filter(t => {
+  const list = data.filter(t => {
     const tDateStr = String(t.date || '').substring(0, 10);
 
     if (activeTab === 'today' && tDateStr !== localToday) return false;
@@ -267,7 +267,8 @@ function filterTransactions(data) {
     }
 
     return true;
-  }).sort((a, b) => (a.txn_no || '').localeCompare(b.txn_no || '', undefined, { numeric: true, sensitivity: 'base' }));
+  });
+  return UTILS.sortByNumericIdDesc(list, t => t.txn_no);
 }
 
 function updateStats(data) {

@@ -1,4 +1,4 @@
-﻿/* assets/js/transactions.js */
+/* assets/js/transactions.js */
 let allTransactions = [], editingTxnId = null;
 let allAccounts = [];
 
@@ -26,15 +26,27 @@ async function loadTransactions() {
     const { data: txnData, error: txnErr } = await window.dbClient
       .from('transactions')
       .select('*')
-      .order('date', { ascending: false });
+      .order('id', { ascending: false });
 
     if (txnErr) throw txnErr;
     allTransactions = txnData || [];
 
-    // Map account name to each transaction
+    // Map account name to each transaction and normalize ref_no for display
     allTransactions.forEach(t => {
       const acc = allAccounts.find(a => String(a.id) === String(t.account_id));
       t.account_name = acc ? acc.name : '';
+      
+      // Determine display reference number
+      if (!t.ref_no) {
+        if (t.notes && t.notes.startsWith('[Ref: ')) {
+          const m = t.notes.match(/^\[Ref:\s*([^\]]+)\]/);
+          if (m) t.ref_no = m[1];
+        } else if (t.ref_id !== null && t.ref_id !== undefined) {
+          t.ref_no = 'TXN-' + t.ref_id;
+        } else {
+          t.ref_no = 'TXN-' + t.id;
+        }
+      }
     });
     
     applyFilters();
@@ -124,7 +136,20 @@ function openEdit(id) {
   const t = allTransactions.find(x => x.id === id);
   if (!t) return;
   document.getElementById('modal-title').textContent = 'Edit Transaction';
-  UTILS.populateForm('txn-form', t);
+  
+  // Clean notes from [Ref: ...] header for user display if present
+  let userNotes = t.notes || '';
+  if (userNotes.startsWith('[Ref: ')) {
+    userNotes = userNotes.replace(/^\[Ref:\s*[^\]]+\]\s*/, '');
+  }
+  
+  const formData = {
+    ...t,
+    ref_no: t.ref_no || '',
+    notes: userNotes
+  };
+
+  UTILS.populateForm('txn-form', formData);
   const accountSelect = document.getElementById('txn-account-select');
   if (accountSelect) accountSelect.value = t.account_id || '';
   UTILS.applyDefaultDateInputs(document.getElementById('txn-form'), { skipFieldNames: ['due_date'] });
@@ -136,15 +161,27 @@ async function saveTxn() {
   if (!d.type || !d.amount || !d.date) { APP.showToast('Type, amount and date are required', 'error'); return; }
   
   try {
+    const rawRef = (d.ref_no || '').trim();
+    let numRefId = null;
+    if (rawRef && /^\d+$/.test(rawRef)) {
+      numRefId = parseInt(rawRef, 10);
+    }
+    
+    // Store reference cleanly: if alphanumeric, prepend tag in notes so it's safely persisted without breaking schema
+    let combinedNotes = (d.notes || '').trim();
+    if (rawRef) {
+      combinedNotes = `[Ref: ${rawRef}]` + (combinedNotes ? ' ' + combinedNotes : '');
+    }
+
     const payload = {
       type: d.type,
-      ref_no: d.ref_no || '',
-      ref_type: 'Manual',
       party_name: d.party_name || '',
       amount: parseFloat(d.amount) || 0,
       mode: d.mode || 'Cash',
       date: d.date,
-      notes: d.notes || '',
+      notes: combinedNotes,
+      ref_id: numRefId,
+      ref_type: rawRef ? 'Manual' : null,
       account_id: d.account_id ? parseInt(d.account_id, 10) : null
     };
 
@@ -204,11 +241,14 @@ function applyFilters() {
   }
   if (q) {
     filtered = filtered.filter(t => 
-      `${t.type} ${t.ref_no || ''} ${t.party_name || ''} ${t.mode || ''} ${t.account_name || ''}`
+      `${t.type} ${t.ref_no || ''} ${t.party_name || ''} ${t.mode || ''} ${t.account_name || ''} ${t.notes || ''}`
         .toLowerCase()
         .includes(q)
     );
   }
+
+  // Sort descending by numeric ID / reference
+  filtered = UTILS.sortByNumericIdDesc(filtered, t => t.ref_no || t.id);
 
   renderTable(filtered);
   renderSummary(filtered);
@@ -273,7 +313,7 @@ function renderAccountsTable() {
   tbody.innerHTML = allAccounts.map(a => `
     <tr>
       <td class="cell-bold"><span class="account-name-val">${a.name}</span></td>
-      <td>${a.details || '—'}</td>
+      <td>${a.account_number || a.details || '—'}</td>
       <td class="cell-amount text-success">${UTILS.fmtCurrency(a.total_receipts || 0)}</td>
       <td class="cell-amount text-danger">${UTILS.fmtCurrency(a.total_payments || 0)}</td>
       <td class="cell-amount" style="font-weight:700; color: ${(a.net_balance || 0) >= 0 ? 'var(--success)' : 'var(--danger)'}">
@@ -342,7 +382,7 @@ function editAccount(id) {
   document.getElementById('account-form-title').textContent = 'Edit Account';
   document.getElementById('account-edit-id').value = a.id;
   document.getElementById('account-name-input').value = a.name;
-  document.getElementById('account-details-input').value = a.details || '';
+  document.getElementById('account-details-input').value = a.account_number || a.details || '';
 }
 
 async function saveAccount() {
@@ -356,7 +396,10 @@ async function saveAccount() {
   }
 
   try {
-    const payload = { name, details };
+    const payload = { 
+      name, 
+      account_number: details || null 
+    };
 
     if (editId) {
       const { error } = await window.dbClient

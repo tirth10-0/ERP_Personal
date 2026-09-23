@@ -55,12 +55,12 @@ async function loadExpenses() {
     const { data: expData, error: expErr } = await window.dbClient
       .from('expenses')
       .select('*')
-      .order('date', { ascending: false });
+      .order('id', { ascending: false });
 
     if (expErr) throw expErr;
-    allExpenses = expData || [];
+    allExpenses = UTILS.sortByNumericIdDesc(expData || [], e => e.id);
     
-    renderTable(allExpenses);
+    applyFilters();
     renderChart(allExpenses);
     
     updatePageDebug('Ready (' + allExpenses.length + ')', '#10B981');
@@ -120,12 +120,13 @@ function renderTable(data) {
   }
   tbody.innerHTML = data.map(e => {
     const refNo = 'EXP-' + String(e.id).padStart(3, '0');
+    const desc = e.notes || e.description || '—';
     return `<tr>
     <td><input type="checkbox" class="row-check" value="${e.id}"></td>
     <td class="cell-bold cell-mono" style="font-size:12px; color:var(--primary);">${refNo}</td>
     <td>${UTILS.fmtDate(e.date)}</td>
     <td><span class="badge badge-purple">${e.category || 'General'}</span></td>
-    <td>${e.description || '—'}</td>
+    <td>${desc}</td>
     <td><span class="badge badge-gray">${e.payment_mode || 'Cash'}</span></td>
     <td class="cell-amount">${UTILS.fmtCurrency(e.amount)}</td>
     <td><div class="row-actions">
@@ -201,7 +202,11 @@ function openEdit(id) {
   const e = allExpenses.find(x => x.id === id);
   if (!e) return;
   document.getElementById('modal-title').textContent = 'Edit Expense';
-  UTILS.populateForm('expense-form', e);
+  const formData = {
+    ...e,
+    description: e.notes || e.description || ''
+  };
+  UTILS.populateForm('expense-form', formData);
   UTILS.applyDefaultDateInputs(document.getElementById('expense-form'), { skipFieldNames: ['due_date'] });
   APP.openModal('expense-modal');
 }
@@ -215,7 +220,7 @@ async function saveExpense() {
       category: d.category,
       amount: parseFloat(d.amount) || 0,
       date: d.date,
-      description: d.description || '',
+      notes: d.description || '',
       payment_mode: d.payment_mode || 'Cash'
     };
 
@@ -271,9 +276,13 @@ function applyFilters() {
   if (q) {
     filtered = filtered.filter(x => {
       const refNo = 'exp-' + String(x.id).padStart(3, '0');
-      return `${refNo} ${x.category || ''} ${x.description || ''} ${x.payment_mode || ''}`.toLowerCase().includes(q);
+      const desc = x.notes || x.description || '';
+      return `${refNo} ${x.category || ''} ${desc} ${x.payment_mode || ''}`.toLowerCase().includes(q);
     });
   }
+
+  // Sort descending by numeric ID
+  filtered = UTILS.sortByNumericIdDesc(filtered, e => e.id);
 
   renderTable(filtered);
   renderChart(filtered);

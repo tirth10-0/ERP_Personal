@@ -206,24 +206,24 @@ function renderRevenueChart(revenueData, purchasesData = []) {
         {
           label: 'Sales Revenue (₹)',
           data: revenueData,
-          borderColor: '#10B981',
-          backgroundColor: 'rgba(16,185,129,0.12)',
+          borderColor: '#2F7D22',
+          backgroundColor: 'rgba(47, 125, 34, 0.12)',
           borderWidth: 2.5,
           fill: true,
           tension: 0.35,
-          pointBackgroundColor: '#10B981',
+          pointBackgroundColor: '#2F7D22',
           pointRadius: 3.5
         },
         {
           label: 'Purchases (₹)',
           data: purchasesData,
-          borderColor: '#F59E0B',
+          borderColor: '#F58220',
           backgroundColor: 'transparent',
           borderWidth: 2,
           borderDash: [5, 5],
           fill: false,
           tension: 0.35,
-          pointBackgroundColor: '#F59E0B',
+          pointBackgroundColor: '#F58220',
           pointRadius: 3
         }
       ]
@@ -236,7 +236,7 @@ function renderRevenueChart(revenueData, purchasesData = []) {
           display: true,
           position: 'top',
           align: 'end',
-          labels: { font: { family: 'Space Grotesk', size: 11 }, boxWidth: 10, padding: 8, color: 'var(--text-secondary)' }
+          labels: { font: { family: 'Inter', size: 11 }, boxWidth: 10, padding: 8, color: 'var(--text-secondary)' }
         },
         tooltip: {
           callbacks: {
@@ -249,13 +249,13 @@ function renderRevenueChart(revenueData, purchasesData = []) {
           beginAtZero: true,
           ticks: {
             callback: v => '₹' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v),
-            font: { family: 'Space Grotesk', size: 10 },
+            font: { family: 'Inter', size: 10 },
             color: 'var(--text-muted)'
           },
-          grid: { color: 'rgba(255,255,255,0.05)' }
+          grid: { color: 'rgba(0,0,0,0.04)' }
         },
         x: {
-          ticks: { font: { family: 'Space Grotesk', size: 10 }, color: 'var(--text-muted)' },
+          ticks: { font: { family: 'Inter', size: 10 }, color: 'var(--text-muted)' },
           grid: { display: false }
         }
       }
@@ -278,7 +278,7 @@ function renderCategoryChart(data) {
       labels: labels.length > 0 ? labels : ['No Data'], 
       datasets: [{ 
         data: values.length > 0 ? values : [1], 
-        backgroundColor: ['#7C3AED','#10B981','#10B981','#EF4444','#3B82F6','#EC4899'] 
+        backgroundColor: ['#063F2C', '#2F7D22', '#5FAF24', '#F58220', '#0B4A35', '#7D9B89'] 
       }] 
     },
     options: { responsive: true, cutout: '70%', plugins: { legend: { display: labels.length > 0 } } }

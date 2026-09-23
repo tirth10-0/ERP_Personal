@@ -244,21 +244,21 @@
   padding: 10px 16px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: var(--transition);
   text-decoration: none;
   color: var(--text-primary);
   min-height: 48px;
   width: 100%;
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 
 .quick-action-card:hover {
-  border-color: var(--accent) !important;
-  background: var(--accent-light);
+  border-color: var(--brand-green) !important;
+  background: var(--bg-soft-green);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow);
 }
 
 .quick-action-icon {
@@ -269,13 +269,13 @@
   align-items: center;
   justify-content: center;
   background: var(--accent-light);
-  color: var(--accent);
+  color: var(--brand-forest);
   transition: var(--transition);
   flex-shrink: 0;
 }
 
 .quick-action-icon svg { width: 16px; height: 16px; stroke-width: 2.2; }
-.quick-action-card:hover .quick-action-icon { background: var(--accent); color: var(--accent-fg); }
+.quick-action-card:hover .quick-action-icon { background: var(--brand-forest); color: #FFFFFF; }
 
 .quick-action-label {
   font-size: 13px;
@@ -292,7 +292,7 @@
 }
 
 .quick-action-card:hover::after {
-  color: var(--accent);
+  color: var(--brand-green);
   transform: translateX(2px);
 }
 

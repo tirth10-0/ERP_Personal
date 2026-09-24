@@ -19,13 +19,14 @@ async function loadExpenses() {
     
     await DB.initDB();
     
-    // Fetch master options for expense categories if configured
-    try {
-      const { data: opts } = await window.dbClient
-        .from('master_options')
-        .select('*')
-        .eq('category', 'expense_category');
+    // Fetch master options and expenses in parallel for fast rendering
+    const [optsRes, expRes] = await Promise.all([
+      window.dbClient.from('master_options').select('*').eq('category', 'expense_category'),
+      window.dbClient.from('expenses').select('*').order('id', { ascending: false })
+    ]);
 
+    try {
+      const opts = optsRes.data || [];
       const defaultCats = [
         'Electricity & Utilities',
         'Freight & Transport',
@@ -36,7 +37,7 @@ async function loadExpenses() {
         'Others'
       ];
 
-      const customCats = (opts || []).map(o => o.value);
+      const customCats = opts.map(o => o.value);
       const finalCategories = customCats.length > 0 ? Array.from(new Set([...defaultCats, ...customCats])) : defaultCats;
       
       const catFilter = document.getElementById('cat-filter');
@@ -52,13 +53,8 @@ async function loadExpenses() {
       console.warn('Failed to load expense categories from master options:', e);
     }
     
-    const { data: expData, error: expErr } = await window.dbClient
-      .from('expenses')
-      .select('*')
-      .order('id', { ascending: false });
-
-    if (expErr) throw expErr;
-    allExpenses = UTILS.sortByNumericIdDesc(expData || [], e => e.id);
+    if (expRes.error) throw expRes.error;
+    allExpenses = UTILS.sortByNumericIdDesc(expRes.data || [], e => e.id);
     
     applyFilters();
     renderChart(allExpenses);
@@ -215,6 +211,9 @@ async function saveExpense() {
   const d = UTILS.getFormData('expense-form');
   if (!d.category || !d.amount || !d.date) { APP.showToast('Category, amount and date are required', 'error'); return; }
   
+  const saveBtn = document.querySelector('#expense-modal .btn-primary');
+  if (saveBtn) APP.setButtonLoading(saveBtn, true, editingExpenseId ? 'Updating...' : 'Saving...');
+
   try {
     const payload = {
       category: d.category,
@@ -224,28 +223,28 @@ async function saveExpense() {
       payment_mode: d.payment_mode || 'Cash'
     };
 
-    const isEdit = Boolean(editingExpenseId);
-    APP.closeModal('expense-modal');
-    APP.showToast(isEdit ? 'Expense updated!' : 'Expense added!', 'success');
-
     if (editingExpenseId) {
       const { error } = await window.dbClient
         .from('expenses')
         .update(payload)
         .eq('id', editingExpenseId);
       if (error) throw error;
+      APP.showToast('Expense updated!', 'success');
     } else {
       const { error } = await window.dbClient
         .from('expenses')
         .insert([payload]);
       if (error) throw error;
+      APP.showToast('Expense added!', 'success');
     }
 
-    await loadExpenses();
+    APP.closeModal('expense-modal');
+    loadExpenses();
   } catch (err) {
     console.error('saveExpense failed:', err);
     APP.showToast('Error saving expense: ' + err.message, 'error');
-    loadExpenses();
+  } finally {
+    if (saveBtn) APP.setButtonLoading(saveBtn, false);
   }
 }
 

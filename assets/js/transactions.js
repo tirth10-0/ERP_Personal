@@ -160,6 +160,9 @@ async function saveTxn() {
   const d = UTILS.getFormData('txn-form');
   if (!d.type || !d.amount || !d.date) { APP.showToast('Type, amount and date are required', 'error'); return; }
   
+  const saveBtn = document.querySelector('#txn-modal .btn-primary');
+  if (saveBtn) APP.setButtonLoading(saveBtn, true, editingTxnId ? 'Updating...' : 'Recording...');
+
   try {
     const rawRef = (d.ref_no || '').trim();
     let numRefId = null;
@@ -185,28 +188,28 @@ async function saveTxn() {
       account_id: d.account_id ? parseInt(d.account_id, 10) : null
     };
 
-    const isEdit = Boolean(editingTxnId);
-    APP.closeModal('txn-modal');
-    APP.showToast(isEdit ? 'Transaction updated!' : 'Transaction recorded!', 'success');
-
     if (editingTxnId) {
       const { error } = await window.dbClient
         .from('transactions')
         .update(payload)
         .eq('id', editingTxnId);
       if (error) throw error;
+      APP.showToast('Transaction updated!', 'success');
     } else {
       const { error } = await window.dbClient
         .from('transactions')
         .insert([payload]);
       if (error) throw error;
+      APP.showToast('Transaction recorded!', 'success');
     }
 
-    await loadTransactions();
+    APP.closeModal('txn-modal');
+    loadTransactions();
   } catch (err) {
     console.error('saveTxn failed:', err);
     APP.showToast('Error saving transaction: ' + err.message, 'error');
-    loadTransactions();
+  } finally {
+    if (saveBtn) APP.setButtonLoading(saveBtn, false);
   }
 }
 

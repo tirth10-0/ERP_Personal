@@ -501,6 +501,9 @@ async function saveTransaction() {
     return;
   }
 
+  const saveBtn = document.querySelector('#daily-transaction-modal .btn-primary');
+  if (saveBtn) APP.setButtonLoading(saveBtn, true, editingDailyTransactionId ? 'Updating...' : 'Saving...');
+
   try {
     for (const material of materialsUsed) {
       const item = inventoryItems.find(x => String(x.id) === String(material.item_id));
@@ -604,9 +607,6 @@ async function adjustDailyInventoryStock(itemId, qtyDelta) {
       unit: m.unit || m.base_unit || 'Nos'
     }));
 
-    APP.closeModal('daily-transaction-modal');
-    APP.showToast('Daily entry saved and inventory stock synchronized!', 'success');
-
     if (newMats.length > 0) {
       await window.dbClient.from('daily_transaction_materials').insert(newMats);
       
@@ -616,11 +616,14 @@ async function adjustDailyInventoryStock(itemId, qtyDelta) {
       }
     }
 
-    await loadDailyTransactions();
+    APP.showToast('Daily entry saved and inventory stock synchronized!', 'success');
+    APP.closeModal('daily-transaction-modal');
+    loadDailyTransactions();
   } catch (err) {
     console.error('saveTransaction failed:', err);
     APP.showToast('Error saving transaction: ' + err.message, 'error');
-    loadDailyTransactions();
+  } finally {
+    if (saveBtn) APP.setButtonLoading(saveBtn, false);
   }
 }
 

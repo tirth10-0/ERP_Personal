@@ -479,15 +479,15 @@ async function loadProducts() {
     UTILS.renderTableSkeleton('products-table');
     await DB.initDB();
     
-    // Fetch products
-    const { data: allProductsData, error: prodError } = await window.dbClient.from('products').select('*');
-    if (prodError) throw prodError;
-    allProducts = (allProductsData || []).sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
-    
-    // Fetch packaging options
-    const { data: allPackagingOptionsData, error: packError } = await window.dbClient.from('product_packaging').select('*');
-    if (packError) throw packError;
-    allPackagingOptions = allPackagingOptionsData || [];
+    // Fetch products and packaging options in parallel for high performance
+    const [prodRes, packRes] = await Promise.all([
+      window.dbClient.from('products').select('*'),
+      window.dbClient.from('product_packaging').select('*')
+    ]);
+    if (prodRes.error) throw prodRes.error;
+    if (packRes.error) throw packRes.error;
+    allProducts = (prodRes.data || []).sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    allPackagingOptions = packRes.data || [];
 
     syncCatalogUnits();
     updateUnitSelect();
@@ -975,6 +975,9 @@ async function saveProduct() {
   if (!baseVariant.packaging_size) { APP.showToast('Base variant must have a size', 'error'); return; }
   if (!baseVariant.sell_price || baseVariant.sell_price <= 0) { APP.showToast('Base variant selling price is required', 'error'); return; }
 
+  const saveBtn = document.querySelector('#product-modal .btn-primary');
+  if (saveBtn) APP.setButtonLoading(saveBtn, true, editingProductId ? 'Updating...' : 'Saving...');
+
   try {
     const defaultGst = document.getElementById('default-gst')?.value || '';
     const productPurchasePrice = baseVariant.purchase_price || 0;
@@ -1038,20 +1041,19 @@ async function saveProduct() {
       // is_base is not in the database schema; it is inferred based on purchase_price > 0
     }));
 
-    const isEdit = Boolean(editingProductId);
-    APP.closeModal('product-modal');
-    APP.showToast(isEdit ? 'Product updated!' : 'Product added!', 'success');
-
     if (pkgPayload.length > 0) {
       const { error: pkgErr } = await window.dbClient.from('product_packaging').insert(pkgPayload);
       if (pkgErr) throw pkgErr;
     }
 
-    await loadProducts();
+    APP.showToast(editingProductId ? 'Product updated!' : 'Product added!', 'success');
+    APP.closeModal('product-modal');
+    loadProducts();
   } catch (err) {
     console.error('saveProduct failed:', err);
     APP.showToast('Error saving product: ' + err.message, 'error');
-    loadProducts();
+  } finally {
+    if (saveBtn) APP.setButtonLoading(saveBtn, false);
   }
 }
 

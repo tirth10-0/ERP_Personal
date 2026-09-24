@@ -18,23 +18,18 @@ async function loadPurchases() {
     UTILS.renderTableSkeleton('purchases-table');
     await DB.initDB();
     
-    console.log('Purchases: Loading purchasable items...');
-    await refreshPurchasableItems();
-    
-    console.log('Purchases: Loading purchases from database...');
-    const { data: pData, error: pErr } = await window.dbClient.from('purchases').select('*').order('date', {ascending: false});
-    if (pErr) throw pErr;
-    allPurchases = pData || [];
+    // Load purchasable items, purchases, suppliers, and purchase_items in parallel
+    const [, pRes, supRes, piRes] = await Promise.all([
+      refreshPurchasableItems(),
+      window.dbClient.from('purchases').select('*').order('date', { ascending: false }),
+      window.dbClient.from('suppliers').select('*'),
+      window.dbClient.from('purchase_items').select('*')
+    ]);
 
-    // Removed random auto-fix for purchase_no
-    
-    // Retrieve supplier list to map display names
-    const { data: supData } = await window.dbClient.from('suppliers').select('*');
-    const suppliersList = supData || [];
-    
-    // Retrieve purchase items to display in the table
-    const { data: piData } = await window.dbClient.from('purchase_items').select('*');
-    const allItems = piData || [];
+    if (pRes.error) throw pRes.error;
+    allPurchases = pRes.data || [];
+    const suppliersList = supRes.data || [];
+    const allItems = piRes.data || [];
     
     allPurchases.forEach(p => {
       const match = suppliersList.find(s => s.id === p.supplier_id);
@@ -551,6 +546,9 @@ async function savePurchase() {
   const supplierName = supplierSelect ? supplierSelect.options[supplierSelect.selectedIndex].text : '';
   const total = purchaseItems.reduce((s, it) => s + it.total, 0);
   
+  const saveBtn = document.querySelector('#purchase-modal .btn-primary');
+  if (saveBtn) APP.setButtonLoading(saveBtn, true, editingPurchaseId ? 'Updating...' : 'Saving...');
+
   try {
     const rpcPayload = {
       p_invoice_no: d.invoice_no || '',
@@ -601,22 +599,23 @@ async function savePurchase() {
 
     rpcPayload.p_items = itemsPayload;
 
-    const isEdit = Boolean(editingPurchaseId);
-    APP.closeModal('purchase-modal');
-    APP.showToast(isEdit ? 'Purchase updated and inventory synced!' : 'Purchase saved and inventory synced!', 'success');
-
     if (editingPurchaseId) {
       rpcPayload.p_purchase_id = editingPurchaseId;
       await savePurchaseDirect(rpcPayload, itemsPayload);
+      APP.showToast('Purchase updated and inventory synced!', 'success');
     } else {
-      await savePurchaseDirect(rpcPayload, itemsPayload);
+      const res = await savePurchaseDirect(rpcPayload, itemsPayload);
+      const createdNo = res.purchase_no;
+      APP.showToast(`Purchase ${createdNo || ''} created and inventory synced!`, 'success');
     }
 
-    await loadPurchases();
+    APP.closeModal('purchase-modal');
+    loadPurchases();
   } catch (err) {
     console.error('savePurchase failed:', err);
     APP.showToast('Failed to save purchase: ' + err.message, 'error');
-    loadPurchases();
+  } finally {
+    if (saveBtn) APP.setButtonLoading(saveBtn, false);
   }
 }
 

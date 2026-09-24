@@ -958,9 +958,6 @@ async function saveOrder() {
       });
       console.groupEnd();
 
-      APP.closeModal('order-modal');
-      APP.showToast('Order saved successfully!', 'success');
-
       if (editingOrderId) {
         // 1. Revert previous stock before applying new order edits
         await revertOrderStock(editingOrderId);
@@ -1010,6 +1007,8 @@ async function saveOrder() {
         await insertOrderItemsAndSyncStock(newOrderId, orderItems, finalOrderNo || String(newOrderId));
       }
 
+      APP.closeModal('order-modal');
+      APP.showToast('Order saved successfully!', 'success');
       await loadOrders();
     };
 

@@ -10,24 +10,25 @@ async function loadData() {
   try {
     updatePageDebug('Loading...', '#10B981');
     
-    // Fetch Products (Finished Goods) for top-level record
-    const { data: prodData } = await window.dbClient.from('products').select('id, name');
-    cachedProducts = prodData || [];
+    // Parallelize all queries for fast loading
+    const [prodRes, invRes, fRes, ingsRes] = await Promise.all([
+      window.dbClient.from('products').select('id, name'),
+      window.dbClient.from('inventory_items').select('id, name, unit'),
+      window.dbClient.from('formulations').select('*').order('id', { ascending: false }),
+      window.dbClient.from('formulation_ingredients').select('*')
+    ]);
+
+    cachedProducts = prodRes.data || [];
+    cachedInventory = invRes.data || [];
     
-    // Fetch Inventory (Raw Materials & Finished Goods) for line items
-    const { data: invData } = await window.dbClient.from('inventory_items').select('id, name, unit');
-    cachedInventory = invData || [];
-    
-    // Fetch Formulations and Ingredients separately to avoid PGRST200 missing FK relationship
     let prodBatches = [];
-    const { data: fData, error: fError } = await window.dbClient.from('formulations')
-      .select('*')
-      .order('id', { ascending: false });
+    const fData = fRes.data;
+    const fError = fRes.error;
       
     if (!fError && fData) {
-      const { data: allIngs } = await window.dbClient.from('formulation_ingredients').select('*');
+      const allIngs = ingsRes.data || [];
       const ingsByFormId = {};
-      (allIngs || []).forEach(ing => {
+      allIngs.forEach(ing => {
         if (!ingsByFormId[ing.formulation_id]) ingsByFormId[ing.formulation_id] = [];
         ingsByFormId[ing.formulation_id].push({
           id: ing.id,
@@ -337,6 +338,9 @@ async function saveProduction() {
   
   const validLines = currentLines.filter(i => i.inventory_id && parseFloat(i.quantity) > 0);
   
+  const saveBtn = document.querySelector('#production-modal .btn-primary');
+  if (saveBtn) APP.setButtonLoading(saveBtn, true, editingProductionId ? 'Updating...' : 'Saving...');
+
   try {
     const prodObj = cachedProducts.find(p => p.id == d.product_id);
     let finalBatchNo = d.batch_no;
@@ -356,9 +360,6 @@ async function saveProduction() {
       total_quantity: qtyProduced
     };
     
-    APP.closeModal('production-modal');
-    APP.showToast('Production batch saved successfully!', 'success');
-
     let savedId = editingProductionId;
     
     if (editingProductionId) {
@@ -468,12 +469,15 @@ async function saveProduction() {
       }
     }
     
-    await loadData();
+    APP.showToast('Production batch saved successfully!', 'success');
+    APP.closeModal('production-modal');
+    loadData();
     
   } catch (err) {
     console.error(err);
     APP.showToast('Error saving: ' + err.message, 'error');
-    loadData();
+  } finally {
+    if (saveBtn) APP.setButtonLoading(saveBtn, false);
   }
 }
 

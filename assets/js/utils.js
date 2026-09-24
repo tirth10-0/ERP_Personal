@@ -126,17 +126,19 @@ function applyMobileTableLabels(tableOrId) {
     });
   });
 }
-function renderTableSkeleton(tableOrId, rows = 6) {
+function renderTableSkeleton(tableOrId, rows = 6, force = false) {
   const table = typeof tableOrId === 'string' ? document.getElementById(tableOrId) : tableOrId;
   if (!table) return;
   const tbody = table.querySelector('tbody');
   const headCount = table.querySelectorAll('thead th').length || 1;
   if (!tbody) return;
+  if (!force && tbody.children.length > 0 && !tbody.querySelector('.skeleton-table-row')) return;
   tbody.innerHTML = Array.from({ length: rows }).map(() => `<tr class="skeleton-table-row">${Array.from({ length: headCount }).map(() => `<td><div class="skeleton-line ${Math.random() > 0.5 ? 'w-80' : 'w-60'}"></div></td>`).join('')}</tr>`).join('');
 }
-function setSkeletonText(elOrId, widthClass = 'w-60', large = false) {
+function setSkeletonText(elOrId, widthClass = 'w-60', large = false, force = false) {
   const el = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
   if (!el) return;
+  if (!force && el.textContent.trim() !== '' && !el.querySelector('.skeleton-line')) return;
   el.innerHTML = `<div class="skeleton-line ${large ? 'lg ' : ''}${widthClass}"></div>`;
 }
 function renderListSkeleton(containerOrId, count = 5) {

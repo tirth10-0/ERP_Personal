@@ -17,128 +17,187 @@ async function loadDashboard() {
   try {
     renderDashboardSkeleton();
     await DB.initDB();
-
-    // Parallel fetch all dashboard data sources simultaneously for maximum speed
-    const [
-      ordersRes,
-      pendingOrdersRes,
-      purchasesRes,
-      expensesRes,
-      recentOrdersRes,
-      invItemsRes,
-      stockBatchesRes
-    ] = await Promise.all([
-      window.dbClient.from('orders').select('date, total_amount, status'),
-      window.dbClient.from('orders').select('id', { count: 'exact', head: true }).neq('status', 'Delivered'),
-      window.dbClient.from('purchases').select('date, total_amount'),
-      window.dbClient.from('expenses').select('amount'),
-      window.dbClient.from('orders').select('order_no, client_name, date, total_amount, status').order('date', { ascending: false }).limit(5),
-      window.dbClient.from('inventory_items').select('id, name, unit, reorder_level, category, item_subtype'),
-      window.dbClient.from('stock_batches').select('item_id, current_qty, purchase_price').eq('item_type', 'Inventory')
-    ]);
-
-    // 1. Process Revenue
-    const allOrders = ordersRes?.data || [];
-    const revenue = allOrders
-      .filter(o => o.status === 'Delivered')
-      .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
-    const kpiRevenue = document.getElementById('kpi-revenue');
-    if (kpiRevenue) kpiRevenue.textContent = UTILS.fmtCurrency(revenue);
-
-    // 2. Active / Pending Orders
-    const activeOrders = pendingOrdersRes?.count || 0;
-    const kpiOrders = document.getElementById('kpi-orders');
-    if (kpiOrders) kpiOrders.textContent = activeOrders;
-    const badge = document.getElementById('pending-badge');
-    if (badge) { 
-      badge.textContent = activeOrders; 
-      badge.style.display = activeOrders ? '' : 'none'; 
+    
+    async function loadRevenueKPI() {
+      let revenue = 0;
+      try {
+        const { data: revData, error: revErr } = await window.dbClient.from('orders').select('total_amount').eq('status', 'Delivered');
+        if (!revErr && revData) {
+          revenue = revData.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
+        }
+      } catch (e) {
+        console.warn('Revenue fetch note:', e);
+      }
+      const kpiRevenue = document.getElementById('kpi-revenue');
+      if (kpiRevenue) kpiRevenue.textContent = UTILS.fmtCurrency(revenue);
     }
 
-    // 3. Purchases
-    const allPurchases = purchasesRes?.data || [];
-    const totalPurchases = allPurchases.reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
-    const kpiPurchases = document.getElementById('kpi-purchases');
-    if (kpiPurchases) kpiPurchases.textContent = UTILS.fmtCurrency(totalPurchases);
+    async function loadActiveOrdersKPI() {
+      let activeOrders = 0;
+      try {
+        const { count: actCount, error: actErr } = await window.dbClient.from('orders').select('id', { count: 'exact', head: true }).neq('status', 'Delivered');
+        if (!actErr) activeOrders = actCount || 0;
+      } catch (e) {
+        console.warn('Active orders note:', e);
+      }
+      const kpiOrders = document.getElementById('kpi-orders');
+      if (kpiOrders) kpiOrders.textContent = activeOrders;
+      
+      const badge = document.getElementById('pending-badge');
+      if (badge) { 
+        badge.textContent = activeOrders; 
+        badge.style.display = activeOrders ? '' : 'none'; 
+      }
+    }
 
-    // 4. Expenses
-    const allExpenses = expensesRes?.data || [];
-    const totalExpenses = allExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-    const kpiExpenses = document.getElementById('kpi-expenses');
-    if (kpiExpenses) kpiExpenses.textContent = UTILS.fmtCurrency(totalExpenses);
-
-    // 5. Monthly Revenue & Purchase Chart
-    const monthlyRev = new Array(12).fill(0);
-    const monthlyPur = new Array(12).fill(0);
-    const currentYear = new Date().getFullYear();
-
-    allOrders.forEach(o => {
-      if (o.date) {
-        const d = new Date(o.date);
-        if (d.getFullYear() === currentYear) {
-          monthlyRev[d.getMonth()] += (parseFloat(o.total_amount) || 0);
+    async function loadPurchasesKPI() {
+      let totalPurchases = 0;
+      try {
+        const { data: purData, error: purErr } = await window.dbClient.from('purchases').select('total_amount');
+        if (!purErr && purData) {
+          totalPurchases = purData.reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
         }
+      } catch (e) {
+        console.warn('Purchases fetch note:', e);
       }
-    });
+      const kpiPurchases = document.getElementById('kpi-purchases');
+      if (kpiPurchases) kpiPurchases.textContent = UTILS.fmtCurrency(totalPurchases);
+    }
 
-    allPurchases.forEach(p => {
-      if (p.date) {
-        const d = new Date(p.date);
-        if (d.getFullYear() === currentYear) {
-          monthlyPur[d.getMonth()] += (parseFloat(p.total_amount) || 0);
+    async function loadExpensesKPI() {
+      let totalExpenses = 0;
+      try {
+        const { data: expData, error: expErr } = await window.dbClient.from('expenses').select('amount');
+        if (!expErr && expData) {
+          totalExpenses = expData.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
         }
+      } catch (e) {
+        console.warn('Expenses fetch note:', e);
       }
-    });
-    renderRevenueChart(monthlyRev, monthlyPur);
+      const kpiExpenses = document.getElementById('kpi-expenses');
+      if (kpiExpenses) kpiExpenses.textContent = UTILS.fmtCurrency(totalExpenses);
+    }
 
-    // 6. Recent Orders
-    renderRecentActivities(recentOrdersRes?.data || []);
+    async function loadChartData() {
+      try {
+        const [ordersRes, purchasesRes] = await Promise.all([
+          window.dbClient.from('orders').select('date, total_amount, status'),
+          window.dbClient.from('purchases').select('date, total_amount')
+        ]);
+        const allOrders = ordersRes.data || [];
+        const allPurchases = purchasesRes.data || [];
+        
+        const monthlyRev = new Array(12).fill(0);
+        const monthlyPur = new Array(12).fill(0);
+        const currentYear = new Date().getFullYear();
 
-    // 7. Inventory Stock & Alerts
-    const invData = invItemsRes?.data || [];
-    const batches = stockBatchesRes?.data || [];
-    const costMap = {};
-    batches.forEach(b => {
-      if (!costMap[b.item_id]) costMap[b.item_id] = { totalCost: 0, totalQty: 0 };
-      const qty = parseFloat(b.current_qty) || 0;
-      const price = parseFloat(b.purchase_price) || 0;
-      if (qty > 0) {
-        costMap[b.item_id].totalCost += (qty * price);
-        costMap[b.item_id].totalQty += qty;
+        allOrders.forEach(o => {
+          if (o.date) {
+            const d = new Date(o.date);
+            if (d.getFullYear() === currentYear) {
+              const m = d.getMonth();
+              monthlyRev[m] += (parseFloat(o.total_amount) || 0);
+            }
+          }
+        });
+
+        allPurchases.forEach(p => {
+          if (p.date) {
+            const d = new Date(p.date);
+            if (d.getFullYear() === currentYear) {
+              const m = d.getMonth();
+              monthlyPur[m] += (parseFloat(p.total_amount) || 0);
+            }
+          }
+        });
+
+        renderRevenueChart(monthlyRev, monthlyPur);
+      } catch (e) {
+        console.warn('Chart data note:', e);
+        renderRevenueChart(new Array(12).fill(0), new Array(12).fill(0));
       }
-    });
+    }
 
-    window.dashboardInventoryData = invData.map(p => {
-      const batchStock = (costMap[p.id] && costMap[p.id].totalQty) ? costMap[p.id].totalQty : (parseFloat(p.stock || 0) || 0);
-      let cost = 0;
-      if (costMap[p.id] && costMap[p.id].totalQty > 0) {
-        cost = costMap[p.id].totalCost / costMap[p.id].totalQty;
+    async function loadRecentOrders() {
+      try {
+        const { data: recentActivities, error: recErr } = await window.dbClient.from('orders')
+          .select('order_no, client_name, date, total_amount, status')
+          .order('date', { ascending: false })
+          .limit(5);
+        renderRecentActivities(recErr ? [] : recentActivities || []);
+      } catch (e) {
+        console.warn('Recent orders note:', e);
+        renderRecentActivities([]);
       }
-      return { ...p, stock: batchStock, val: batchStock * cost };
-    });
+    }
 
-    const stockAlerts = window.dashboardInventoryData
-      .filter(p => {
-        const itemType = String(p.item_subtype || p.category || 'Raw Material').trim();
-        const isTech = itemType.toLowerCase() === 'technical';
-        const reorder = parseFloat(p.reorder_level || 0);
-        const threshold = reorder > 0 ? reorder : (isTech ? 7 : 50);
-        return p.stock <= threshold;
-      })
-      .map(p => {
-        const itemType = String(p.item_subtype || p.category || 'Raw Material').trim();
-        const isTech = itemType.toLowerCase() === 'technical';
-        const reorder = parseFloat(p.reorder_level || 0);
-        return { 
-          ...p, 
-          type: itemType,
-          reorder_level: reorder > 0 ? reorder : (isTech ? 7 : 50)
-        };
-      })
-      .sort((a, b) => a.stock - b.stock);
+    async function loadInventorySection() {
+      try {
+        const [invRes, batchRes] = await Promise.all([
+          window.dbClient.from('inventory_items').select('id, name, unit, reorder_level, category, item_subtype'),
+          window.dbClient.from('stock_batches').select('item_id, current_qty, purchase_price').eq('item_type', 'Inventory')
+        ]);
+        const invData = invRes.data || [];
+        const batches = batchRes.data || [];
+        
+        const costMap = {};
+        batches.forEach(b => {
+          if (!costMap[b.item_id]) costMap[b.item_id] = { totalCost: 0, totalQty: 0 };
+          const qty = parseFloat(b.current_qty) || 0;
+          const price = parseFloat(b.purchase_price) || 0;
+          if (qty > 0) {
+            costMap[b.item_id].totalCost += (qty * price);
+            costMap[b.item_id].totalQty += qty;
+          }
+        });
+        
+        window.dashboardInventoryData = invData.map(p => {
+           const batchStock = (costMap[p.id] && costMap[p.id].totalQty) ? costMap[p.id].totalQty : (parseFloat(p.stock || 0) || 0);
+           let cost = 0;
+           if (costMap[p.id] && costMap[p.id].totalQty > 0) {
+             cost = costMap[p.id].totalCost / costMap[p.id].totalQty;
+           }
+           return { ...p, stock: batchStock, val: batchStock * cost };
+        });
+        
+        const stockAlerts = window.dashboardInventoryData
+          .filter(p => {
+             const itemType = String(p.item_subtype || p.category || 'Raw Material').trim();
+             const isTech = itemType.toLowerCase() === 'technical';
+             const reorder = parseFloat(p.reorder_level || 0);
+             const threshold = reorder > 0 ? reorder : (isTech ? 7 : 50);
+             return p.stock <= threshold;
+          })
+          .map(p => {
+             const itemType = String(p.item_subtype || p.category || 'Raw Material').trim();
+             const isTech = itemType.toLowerCase() === 'technical';
+             const reorder = parseFloat(p.reorder_level || 0);
+             return { 
+               ...p, 
+               type: itemType,
+               reorder_level: reorder > 0 ? reorder : (isTech ? 7 : 50)
+             };
+          })
+          .sort((a, b) => a.stock - b.stock);
 
-    renderStockAlerts(stockAlerts || []);
-    renderInventoryValueSection();
+        renderStockAlerts(stockAlerts || []);
+        renderInventoryValueSection();
+      } catch (e) {
+        console.warn('Inventory calculation note:', e);
+        renderStockAlerts([]);
+      }
+    }
+
+    // Run all sections simultaneously in parallel for instant display
+    await Promise.allSettled([
+      loadRevenueKPI(),
+      loadActiveOrdersKPI(),
+      loadPurchasesKPI(),
+      loadExpensesKPI(),
+      loadChartData(),
+      loadRecentOrders(),
+      loadInventorySection()
+    ]);
     
     console.log('Dashboard: All data loaded successfully in parallel');
     updatePageDebug('Ready', '#10B981');

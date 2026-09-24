@@ -300,6 +300,26 @@ function hideSpinner() {
   el?.classList.remove('active');
 }
 
+function setButtonLoading(btn, isLoading, loadingText = 'Saving...') {
+  const el = typeof btn === 'string' ? document.getElementById(btn) : btn;
+  if (!el) return;
+  if (isLoading) {
+    el.dataset.origHtml = el.innerHTML;
+    el.disabled = true;
+    el.style.opacity = '0.75';
+    el.style.cursor = 'not-allowed';
+    el.innerHTML = `<span class="btn-spinner" style="display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin 0.6s linear infinite;margin-right:6px;vertical-align:-2px"></span>${loadingText}`;
+  } else {
+    if (el.dataset.origHtml) {
+      el.innerHTML = el.dataset.origHtml;
+      delete el.dataset.origHtml;
+    }
+    el.disabled = false;
+    el.style.opacity = '';
+    el.style.cursor = '';
+  }
+}
+
 /* ── USER DROPDOWN ───────────────────────────────────── */
 function toggleUserDropdown() {
   const dropdown = document.getElementById('user-dropdown');
@@ -631,6 +651,7 @@ window.APP = {
   closeModal,
   showSpinner,
   hideSpinner,
+  setButtonLoading,
   showConfirm,
   openUserProfile,
   handleLogout,

@@ -102,11 +102,10 @@ async function saveSupplier() {
   const d = UTILS.getFormData('supplier-form');
   if (!d.name) { APP.showToast('Supplier name is required', 'error'); return; }
   
-  try {
-    const isEdit = Boolean(editingSupplierId);
-    APP.closeModal('supplier-modal');
-    APP.showToast(isEdit ? 'Supplier updated!' : 'Supplier added!', 'success');
+  const saveBtn = document.querySelector('#supplier-modal .btn-primary');
+  if (saveBtn) APP.setButtonLoading(saveBtn, true, editingSupplierId ? 'Updating...' : 'Saving...');
 
+  try {
     let error;
     if (editingSupplierId) {
       const res = await window.dbClient.from('suppliers').update(d).eq('id', editingSupplierId);
@@ -117,11 +116,15 @@ async function saveSupplier() {
     }
     
     if (error) throw new Error(error.message || 'Failed to save supplier');
-    await loadSuppliers();
+    
+    APP.showToast(editingSupplierId ? 'Supplier updated!' : 'Supplier added!', 'success');
+    APP.closeModal('supplier-modal');
+    loadSuppliers();
   } catch (err) {
     console.error('saveSupplier failed:', err);
     APP.showToast('Error saving supplier: ' + err.message, 'error');
-    loadSuppliers();
+  } finally {
+    if (saveBtn) APP.setButtonLoading(saveBtn, false);
   }
 }
 

@@ -15,14 +15,20 @@ async function loadInventory() {
   try {
     UTILS.renderTableSkeleton('inventory-table');
     await DB.initDB();
-    await loadMasterOptions();
-    await loadCatalogProductSuggestions();
+    
+    // Parallelize all data queries for instant page load
+    const [, , itemsRes, batchesRes] = await Promise.all([
+      loadMasterOptions(),
+      loadCatalogProductSuggestions(),
+      window.dbClient.from('inventory_items').select('*'),
+      window.dbClient.from('stock_batches').select('item_id, current_qty, purchase_price').eq('item_type', 'Inventory')
+    ]);
 
-    const { data: items, error } = await window.dbClient.from('inventory_items').select('*');
-    if (error) throw error;
+    if (itemsRes.error) throw itemsRes.error;
+    const items = itemsRes.data || [];
+    const batches = batchesRes.data || [];
     
     // Compute dynamic avg cost based on available batches (opening stock + purchases)
-    const { data: batches } = await window.dbClient.from('stock_batches').select('item_id, current_qty, purchase_price').eq('item_type', 'Inventory');
     const costMap = {};
     if (batches) {
       batches.forEach(b => {
@@ -902,15 +908,13 @@ async function saveTechnicalItem() {
       opening_cost: d.opening_cost,
       opening_batch_no: d.opening_batch_no
     };
-    const isEdit = Boolean(editingItemId);
-    APP.closeModal('technical-modal');
-    APP.showToast(isEdit ? 'Technical updated!' : 'Technical added!', 'success');
     await saveInventoryItemAPI(payload);
-    await loadInventory();
+    APP.showToast(editingItemId ? 'Technical updated!' : 'Technical added!', 'success');
+    APP.closeModal('technical-modal');
+    setTimeout(() => loadInventory(), 100);
   } catch (err) {
     console.error('saveTechnicalItem failed:', err);
     APP.showToast('Error saving technical item: ' + err.message, 'error');
-    loadInventory();
   }
 }
 
@@ -933,15 +937,13 @@ async function saveBottleItem() {
       opening_cost: d.opening_cost,
       opening_batch_no: d.opening_batch_no
     };
-    const isEdit = Boolean(editingItemId);
-    APP.closeModal('bottle-modal');
-    APP.showToast(isEdit ? 'Bottle updated!' : 'Bottle added!', 'success');
     await saveInventoryItemAPI(payload);
-    await loadInventory();
+    APP.showToast(editingItemId ? 'Bottle updated!' : 'Bottle added!', 'success');
+    APP.closeModal('bottle-modal');
+    setTimeout(() => loadInventory(), 100);
   } catch (err) {
     console.error('saveBottleItem failed:', err);
     APP.showToast('Error saving bottle: ' + err.message, 'error');
-    loadInventory();
   }
 }
 
@@ -964,15 +966,13 @@ async function saveBoxItem() {
       opening_cost: d.opening_cost,
       opening_batch_no: d.opening_batch_no
     };
-    const isEdit = Boolean(editingItemId);
-    APP.closeModal('box-modal');
-    APP.showToast(isEdit ? 'Box updated!' : 'Box added!', 'success');
     await saveInventoryItemAPI(payload);
-    await loadInventory();
+    APP.showToast(editingItemId ? 'Box updated!' : 'Box added!', 'success');
+    APP.closeModal('box-modal');
+    setTimeout(() => loadInventory(), 100);
   } catch (err) {
     console.error('saveBoxItem failed:', err);
     APP.showToast('Error saving box: ' + err.message, 'error');
-    loadInventory();
   }
 }
 
@@ -995,15 +995,13 @@ async function saveLabelItem() {
       opening_cost: d.opening_cost,
       opening_batch_no: d.opening_batch_no
     };
-    const isEdit = Boolean(editingItemId);
-    APP.closeModal('label-modal');
-    APP.showToast(isEdit ? 'Label updated!' : 'Label added!', 'success');
     await saveInventoryItemAPI(payload);
-    await loadInventory();
+    APP.showToast(editingItemId ? 'Label updated!' : 'Label added!', 'success');
+    APP.closeModal('label-modal');
+    setTimeout(() => loadInventory(), 100);
   } catch (err) {
     console.error('saveLabelItem failed:', err);
     APP.showToast('Error saving label: ' + err.message, 'error');
-    loadInventory();
   }
 }
 
@@ -1020,15 +1018,13 @@ async function saveOtherItem() {
       opening_cost: d.opening_cost,
       opening_batch_no: d.opening_batch_no
     };
-    const isEdit = Boolean(editingItemId);
-    APP.closeModal('other-modal');
-    APP.showToast(isEdit ? 'Item updated!' : 'Item added!', 'success');
     await saveInventoryItemAPI(payload);
-    await loadInventory();
+    APP.showToast(editingItemId ? 'Item updated!' : 'Item added!', 'success');
+    APP.closeModal('other-modal');
+    setTimeout(() => loadInventory(), 100);
   } catch (err) {
     console.error('saveOtherItem failed:', err);
     APP.showToast('Error saving item: ' + err.message, 'error');
-    loadInventory();
   }
 }
 

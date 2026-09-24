@@ -112,11 +112,10 @@ async function saveClient() {
   const d = UTILS.getFormData('client-form');
   if (!d.name) { APP.showToast('Name is required', 'error'); return; }
   
-  try {
-    const isEdit = Boolean(editingClientId);
-    APP.closeModal('client-modal');
-    APP.showToast(isEdit ? 'Client updated!' : 'Client added!', 'success');
+  const saveBtn = document.querySelector('#client-modal .btn-primary');
+  if (saveBtn) APP.setButtonLoading(saveBtn, true, editingClientId ? 'Updating...' : 'Saving...');
 
+  try {
     let error;
     if (editingClientId) {
       const res = await window.dbClient.from('clients').update(d).eq('id', editingClientId);
@@ -127,11 +126,15 @@ async function saveClient() {
     }
     
     if (error) throw new Error(error.message || 'Failed to save client');
-    await loadClients();
+    
+    APP.showToast(editingClientId ? 'Client updated!' : 'Client added!', 'success');
+    APP.closeModal('client-modal');
+    loadClients();
   } catch (err) {
     console.error('saveClient failed:', err);
     APP.showToast('Error saving client: ' + err.message, 'error');
-    loadClients();
+  } finally {
+    if (saveBtn) APP.setButtonLoading(saveBtn, false);
   }
 }
 

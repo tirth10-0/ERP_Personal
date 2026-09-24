@@ -356,6 +356,9 @@ async function saveProduction() {
       total_quantity: qtyProduced
     };
     
+    APP.closeModal('production-modal');
+    APP.showToast('Production batch saved successfully!', 'success');
+
     let savedId = editingProductionId;
     
     if (editingProductionId) {
@@ -465,13 +468,12 @@ async function saveProduction() {
       }
     }
     
-    APP.showToast('Production batch saved successfully!', 'success');
-    APP.closeModal('production-modal');
-    loadData();
+    await loadData();
     
   } catch (err) {
     console.error(err);
     APP.showToast('Error saving: ' + err.message, 'error');
+    loadData();
   }
 }
 

@@ -601,21 +601,22 @@ async function savePurchase() {
 
     rpcPayload.p_items = itemsPayload;
 
+    const isEdit = Boolean(editingPurchaseId);
+    APP.closeModal('purchase-modal');
+    APP.showToast(isEdit ? 'Purchase updated and inventory synced!' : 'Purchase saved and inventory synced!', 'success');
+
     if (editingPurchaseId) {
       rpcPayload.p_purchase_id = editingPurchaseId;
       await savePurchaseDirect(rpcPayload, itemsPayload);
-      APP.showToast('Purchase updated and inventory synced!', 'success');
     } else {
-      const res = await savePurchaseDirect(rpcPayload, itemsPayload);
-      const createdNo = res.purchase_no;
-      APP.showToast(`Purchase ${createdNo || ''} created and inventory synced!`, 'success');
+      await savePurchaseDirect(rpcPayload, itemsPayload);
     }
 
-    APP.closeModal('purchase-modal');
-    setTimeout(() => loadPurchases(), 100);
+    await loadPurchases();
   } catch (err) {
     console.error('savePurchase failed:', err);
     APP.showToast('Failed to save purchase: ' + err.message, 'error');
+    loadPurchases();
   }
 }
 

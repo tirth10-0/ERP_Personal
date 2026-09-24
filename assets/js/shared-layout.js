@@ -12,6 +12,11 @@ function getLogoUrl() {
   return isPagesDir ? '../assets/images/logo.jpg' : './assets/images/logo.jpg';
 }
 
+function getInvoiceBuilderUrl() {
+  const isPagesDir = window.location.pathname.includes('/pages/');
+  return isPagesDir ? '../Invoice Builder/index.html' : './Invoice Builder/index.html';
+}
+
 const SIDEBAR_HTML = (logoUrl = getLogoUrl()) => `
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
@@ -46,6 +51,10 @@ const SIDEBAR_HTML = (logoUrl = getLogoUrl()) => `
     <a href="reports.html" class="nav-item" data-page="reports.html" data-tooltip="Business Reports"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="nav-label">Business Reports</span></a>
 
     <div class="nav-section-label">System & Tools</div>
+    <a href="${getInvoiceBuilderUrl()}" class="nav-item" data-page="Invoice Builder" data-tooltip="Invoice Builder">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+      <span class="nav-label">Invoice Builder</span>
+    </a>
     <a href="exports.html" class="nav-item" data-page="exports.html" data-tooltip="Data Exports">
       <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
       <span class="nav-label">Data Exports</span>
@@ -197,10 +206,11 @@ function setActiveBottomNav() {
 }
 
 function setActiveNavFallback() {
+  const isInvoiceBuilder = window.location.pathname.includes('Invoice Builder');
   const path = window.location.pathname.split('/').pop() || 'dashboard.html';
   document.querySelectorAll('.nav-item').forEach(item => {
     const href = item.getAttribute('href') || '';
-    const isActive = href === path;
+    const isActive = isInvoiceBuilder ? href.includes('Invoice Builder') : (href === path);
     item.classList.toggle('active', isActive);
   });
 }

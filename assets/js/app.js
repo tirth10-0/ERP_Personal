@@ -184,10 +184,11 @@ function setupCollapsedHoverPush() {
 
 /* ── ACTIVE NAV ──────────────────────────────────────── */
 function setActiveNav() {
+  const isInvoiceBuilder = window.location.pathname.includes('Invoice Builder');
   const path = window.location.pathname.split('/').pop() || 'dashboard.html';
   document.querySelectorAll('.nav-item').forEach(item => {
     const href = item.getAttribute('href') || '';
-    const isActive = href === path;
+    const isActive = isInvoiceBuilder ? href.includes('Invoice Builder') : (href === path);
     item.classList.toggle('active', isActive);
   });
 }

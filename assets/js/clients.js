@@ -113,6 +113,10 @@ async function saveClient() {
   if (!d.name) { APP.showToast('Name is required', 'error'); return; }
   
   try {
+    const isEdit = Boolean(editingClientId);
+    APP.closeModal('client-modal');
+    APP.showToast(isEdit ? 'Client updated!' : 'Client added!', 'success');
+
     let error;
     if (editingClientId) {
       const res = await window.dbClient.from('clients').update(d).eq('id', editingClientId);
@@ -123,13 +127,11 @@ async function saveClient() {
     }
     
     if (error) throw new Error(error.message || 'Failed to save client');
-    
-    APP.showToast(editingClientId ? 'Client updated!' : 'Client added!', 'success');
-    APP.closeModal('client-modal');
-    setTimeout(() => loadClients(), 100);
+    await loadClients();
   } catch (err) {
     console.error('saveClient failed:', err);
     APP.showToast('Error saving client: ' + err.message, 'error');
+    loadClients();
   }
 }
 

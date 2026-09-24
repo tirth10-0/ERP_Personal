@@ -1,14 +1,14 @@
 /* UniversalSearchSelect Styles */
 
 :root {
-  --uss-accent: var(--brand-green, #2F7D22);
-  --uss-bg: var(--bg, #F7F9F7);
-  --uss-surface: var(--surface, #FFFFFF);
-  --uss-border: var(--border, #DCE6DF);
-  --uss-text: var(--text-primary, #17342A);
-  --uss-text-muted: var(--text-muted, rgba(23, 52, 42, 0.58));
+  --uss-accent: var(--accent, #8fdc4c);
+  --uss-bg: var(--bg, #0f1512);
+  --uss-surface: var(--surface, #16201c);
+  --uss-border: var(--border, rgba(180, 206, 190, 0.2));
+  --uss-text: var(--text-primary, #e7f0ea);
+  --uss-text-muted: var(--text-muted, #8ea294);
   --uss-radius: var(--radius-sm, 8px);
-  --uss-shadow: 0 8px 24px rgba(6, 63, 44, 0.12), 0 2px 6px rgba(6, 63, 44, 0.06);
+  --uss-shadow: 0 14px 28px rgba(0, 0, 0, 0.45), 0 6px 12px rgba(0, 0, 0, 0.25);
 }
 
 .uss-container {
@@ -26,18 +26,18 @@
 
 .uss-input {
   width: 100%;
-  padding: 10px 14px;
+  padding: 11px 16px;
   padding-right: 38px;
   background: var(--uss-surface);
-  border: 1.5px solid var(--uss-border);
+  border: 2px solid var(--uss-border);
   border-radius: var(--uss-radius);
   color: var(--uss-text);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   outline: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .uss-input-wrapper::after {
@@ -46,7 +46,7 @@
   right: 14px;
   width: 16px;
   height: 16px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364736B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238ea294' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
@@ -56,12 +56,12 @@
 
 .uss-input:focus {
   border-color: var(--uss-accent);
-  box-shadow: 0 0 0 3px rgba(47, 125, 34, 0.15);
+  box-shadow: 0 0 0 3px rgba(143, 220, 76, 0.18);
 }
 
 .uss-input:focus ~ .uss-input-wrapper::after,
 .uss-container.open .uss-input-wrapper::after {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%232F7D22' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238fdc4c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 }
 
 .uss-input::placeholder {
@@ -74,8 +74,8 @@
   position: absolute;
   z-index: 999999;
   background: var(--uss-surface);
-  border: 1px solid var(--uss-border);
-  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--uss-border);
+  border-radius: 10px;
   box-shadow: var(--uss-shadow);
   overflow: hidden;
   opacity: 0;
@@ -85,6 +85,7 @@
   max-height: 300px;
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(8px);
 }
 
 #uss-portal.active {
@@ -99,8 +100,8 @@
 }
 
 .uss-item {
-  padding: 9px 12px;
-  border-radius: var(--radius-xs);
+  padding: 10px 14px;
+  border-radius: 6px;
   cursor: pointer;
   color: var(--uss-text);
   font-size: 13px;
@@ -113,12 +114,12 @@
 
 .uss-item:hover,
 .uss-item.hover {
-  background: rgba(47, 125, 34, 0.08);
+  background: rgba(143, 220, 76, 0.12);
   color: var(--uss-accent);
 }
 
 .uss-item.selected {
-  background: rgba(47, 125, 34, 0.14);
+  background: rgba(143, 220, 76, 0.2);
   color: var(--uss-accent);
   font-weight: 600;
 }

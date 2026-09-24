@@ -103,6 +103,10 @@ async function saveSupplier() {
   if (!d.name) { APP.showToast('Supplier name is required', 'error'); return; }
   
   try {
+    const isEdit = Boolean(editingSupplierId);
+    APP.closeModal('supplier-modal');
+    APP.showToast(isEdit ? 'Supplier updated!' : 'Supplier added!', 'success');
+
     let error;
     if (editingSupplierId) {
       const res = await window.dbClient.from('suppliers').update(d).eq('id', editingSupplierId);
@@ -113,13 +117,11 @@ async function saveSupplier() {
     }
     
     if (error) throw new Error(error.message || 'Failed to save supplier');
-    
-    APP.showToast(editingSupplierId ? 'Supplier updated!' : 'Supplier added!', 'success');
-    APP.closeModal('supplier-modal');
-    setTimeout(() => loadSuppliers(), 100);
+    await loadSuppliers();
   } catch (err) {
     console.error('saveSupplier failed:', err);
     APP.showToast('Error saving supplier: ' + err.message, 'error');
+    loadSuppliers();
   }
 }
 

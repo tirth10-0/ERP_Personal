@@ -17,165 +17,130 @@ async function loadDashboard() {
   try {
     renderDashboardSkeleton();
     await DB.initDB();
-    
-    // 1. Fetch Revenue
-    let revenue = 0;
-    try {
-      const { data: revData, error: revErr } = await window.dbClient.from('orders').select('total_amount').eq('status', 'Delivered');
-      if (!revErr && revData) {
-        revenue = revData.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
-      }
-    } catch (e) {
-      console.warn('Revenue fetch note:', e);
-    }
+
+    // Parallel fetch all dashboard data sources simultaneously for maximum speed
+    const [
+      ordersRes,
+      pendingOrdersRes,
+      purchasesRes,
+      expensesRes,
+      recentOrdersRes,
+      invItemsRes,
+      stockBatchesRes
+    ] = await Promise.all([
+      window.dbClient.from('orders').select('date, total_amount, status'),
+      window.dbClient.from('orders').select('id', { count: 'exact', head: true }).neq('status', 'Delivered'),
+      window.dbClient.from('purchases').select('date, total_amount'),
+      window.dbClient.from('expenses').select('amount'),
+      window.dbClient.from('orders').select('order_no, client_name, date, total_amount, status').order('date', { ascending: false }).limit(5),
+      window.dbClient.from('inventory_items').select('id, name, unit, reorder_level, category, item_subtype'),
+      window.dbClient.from('stock_batches').select('item_id, current_qty, purchase_price').eq('item_type', 'Inventory')
+    ]);
+
+    // 1. Process Revenue
+    const allOrders = ordersRes?.data || [];
+    const revenue = allOrders
+      .filter(o => o.status === 'Delivered')
+      .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
     const kpiRevenue = document.getElementById('kpi-revenue');
     if (kpiRevenue) kpiRevenue.textContent = UTILS.fmtCurrency(revenue);
 
-    // 2. Fetch Active Orders
-    let activeOrders = 0;
-    try {
-      const { count: actCount, error: actErr } = await window.dbClient.from('orders').select('id', { count: 'exact', head: true }).neq('status', 'Delivered');
-      if (!actErr) activeOrders = actCount || 0;
-    } catch (e) {
-      console.warn('Active orders note:', e);
-    }
+    // 2. Active / Pending Orders
+    const activeOrders = pendingOrdersRes?.count || 0;
     const kpiOrders = document.getElementById('kpi-orders');
     if (kpiOrders) kpiOrders.textContent = activeOrders;
-    
     const badge = document.getElementById('pending-badge');
     if (badge) { 
       badge.textContent = activeOrders; 
       badge.style.display = activeOrders ? '' : 'none'; 
     }
 
-    // 3. Fetch Total Purchases
-    let totalPurchases = 0;
-    try {
-      const { data: purData, error: purErr } = await window.dbClient.from('purchases').select('total_amount');
-      if (!purErr && purData) {
-        totalPurchases = purData.reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
-      }
-    } catch (e) {
-      console.warn('Purchases fetch note:', e);
-    }
+    // 3. Purchases
+    const allPurchases = purchasesRes?.data || [];
+    const totalPurchases = allPurchases.reduce((sum, p) => sum + (parseFloat(p.total_amount) || 0), 0);
     const kpiPurchases = document.getElementById('kpi-purchases');
     if (kpiPurchases) kpiPurchases.textContent = UTILS.fmtCurrency(totalPurchases);
 
-    // 4. Fetch Total Expenses
-    let totalExpenses = 0;
-    try {
-      const { data: expData, error: expErr } = await window.dbClient.from('expenses').select('amount');
-      if (!expErr && expData) {
-        totalExpenses = expData.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-      }
-    } catch (e) {
-      console.warn('Expenses fetch note:', e);
-    }
+    // 4. Expenses
+    const allExpenses = expensesRes?.data || [];
+    const totalExpenses = allExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
     const kpiExpenses = document.getElementById('kpi-expenses');
     if (kpiExpenses) kpiExpenses.textContent = UTILS.fmtCurrency(totalExpenses);
 
     // 5. Monthly Revenue & Purchase Chart
-    try {
-      const { data: allOrders } = await window.dbClient.from('orders').select('date, total_amount, status');
-      const { data: allPurchases } = await window.dbClient.from('purchases').select('date, total_amount');
-      
-      const monthlyRev = new Array(12).fill(0);
-      const monthlyPur = new Array(12).fill(0);
-      const currentYear = new Date().getFullYear();
+    const monthlyRev = new Array(12).fill(0);
+    const monthlyPur = new Array(12).fill(0);
+    const currentYear = new Date().getFullYear();
 
-      (allOrders || []).forEach(o => {
-        if (o.date) {
-          const d = new Date(o.date);
-          if (d.getFullYear() === currentYear) {
-            const m = d.getMonth();
-            monthlyRev[m] += (parseFloat(o.total_amount) || 0);
-          }
+    allOrders.forEach(o => {
+      if (o.date) {
+        const d = new Date(o.date);
+        if (d.getFullYear() === currentYear) {
+          monthlyRev[d.getMonth()] += (parseFloat(o.total_amount) || 0);
         }
-      });
+      }
+    });
 
-      (allPurchases || []).forEach(p => {
-        if (p.date) {
-          const d = new Date(p.date);
-          if (d.getFullYear() === currentYear) {
-            const m = d.getMonth();
-            monthlyPur[m] += (parseFloat(p.total_amount) || 0);
-          }
+    allPurchases.forEach(p => {
+      if (p.date) {
+        const d = new Date(p.date);
+        if (d.getFullYear() === currentYear) {
+          monthlyPur[d.getMonth()] += (parseFloat(p.total_amount) || 0);
         }
-      });
-
-      renderRevenueChart(monthlyRev, monthlyPur);
-    } catch (e) {
-      console.warn('Chart data note:', e);
-      renderRevenueChart(new Array(12).fill(0), new Array(12).fill(0));
-    }
+      }
+    });
+    renderRevenueChart(monthlyRev, monthlyPur);
 
     // 6. Recent Orders
-    try {
-      const { data: recentActivities, error: recErr } = await window.dbClient.from('orders')
-        .select('order_no, client_name, date, total_amount, status')
-        .order('date', { ascending: false })
-        .limit(5);
-      renderRecentActivities(recErr ? [] : recentActivities || []);
-    } catch (e) {
-      console.warn('Recent orders note:', e);
-      renderRecentActivities([]);
-    }
+    renderRecentActivities(recentOrdersRes?.data || []);
 
-    // 6. Inventory Items & Stock Alerts
-    try {
-      const { data: invData, error: invErr } = await window.dbClient.from('inventory_items').select('id, name, unit, reorder_level, category, item_subtype');
-      const { data: batches } = await window.dbClient.from('stock_batches').select('item_id, current_qty, purchase_price').eq('item_type', 'Inventory');
-      
-      const costMap = {};
-      if (batches) {
-        batches.forEach(b => {
-          if (!costMap[b.item_id]) costMap[b.item_id] = { totalCost: 0, totalQty: 0 };
-          const qty = parseFloat(b.current_qty) || 0;
-          const price = parseFloat(b.purchase_price) || 0;
-          if (qty > 0) {
-            costMap[b.item_id].totalCost += (qty * price);
-            costMap[b.item_id].totalQty += qty;
-          }
-        });
+    // 7. Inventory Stock & Alerts
+    const invData = invItemsRes?.data || [];
+    const batches = stockBatchesRes?.data || [];
+    const costMap = {};
+    batches.forEach(b => {
+      if (!costMap[b.item_id]) costMap[b.item_id] = { totalCost: 0, totalQty: 0 };
+      const qty = parseFloat(b.current_qty) || 0;
+      const price = parseFloat(b.purchase_price) || 0;
+      if (qty > 0) {
+        costMap[b.item_id].totalCost += (qty * price);
+        costMap[b.item_id].totalQty += qty;
       }
-      
-      window.dashboardInventoryData = (invData || []).map(p => {
-         const batchStock = (costMap[p.id] && costMap[p.id].totalQty) ? costMap[p.id].totalQty : (parseFloat(p.stock || 0) || 0);
-         let cost = 0;
-         if (costMap[p.id] && costMap[p.id].totalQty > 0) {
-           cost = costMap[p.id].totalCost / costMap[p.id].totalQty;
-         }
-         return { ...p, stock: batchStock, val: batchStock * cost };
-      });
-      
-      const stockAlerts = window.dashboardInventoryData
-        .filter(p => {
-           const itemType = String(p.item_subtype || p.category || 'Raw Material').trim();
-           const isTech = itemType.toLowerCase() === 'technical';
-           const reorder = parseFloat(p.reorder_level || 0);
-           const threshold = reorder > 0 ? reorder : (isTech ? 7 : 50);
-           return p.stock <= threshold;
-        })
-        .map(p => {
-           const itemType = String(p.item_subtype || p.category || 'Raw Material').trim();
-           const isTech = itemType.toLowerCase() === 'technical';
-           const reorder = parseFloat(p.reorder_level || 0);
-           return { 
-             ...p, 
-             type: itemType,
-             reorder_level: reorder > 0 ? reorder : (isTech ? 7 : 50)
-           };
-        })
-        .sort((a, b) => a.stock - b.stock);
+    });
 
-      renderStockAlerts(stockAlerts || []);
-      renderInventoryValueSection();
-    } catch (e) {
-      console.warn('Inventory calculation note:', e);
-      renderStockAlerts([]);
-    }
+    window.dashboardInventoryData = invData.map(p => {
+      const batchStock = (costMap[p.id] && costMap[p.id].totalQty) ? costMap[p.id].totalQty : (parseFloat(p.stock || 0) || 0);
+      let cost = 0;
+      if (costMap[p.id] && costMap[p.id].totalQty > 0) {
+        cost = costMap[p.id].totalCost / costMap[p.id].totalQty;
+      }
+      return { ...p, stock: batchStock, val: batchStock * cost };
+    });
+
+    const stockAlerts = window.dashboardInventoryData
+      .filter(p => {
+        const itemType = String(p.item_subtype || p.category || 'Raw Material').trim();
+        const isTech = itemType.toLowerCase() === 'technical';
+        const reorder = parseFloat(p.reorder_level || 0);
+        const threshold = reorder > 0 ? reorder : (isTech ? 7 : 50);
+        return p.stock <= threshold;
+      })
+      .map(p => {
+        const itemType = String(p.item_subtype || p.category || 'Raw Material').trim();
+        const isTech = itemType.toLowerCase() === 'technical';
+        const reorder = parseFloat(p.reorder_level || 0);
+        return { 
+          ...p, 
+          type: itemType,
+          reorder_level: reorder > 0 ? reorder : (isTech ? 7 : 50)
+        };
+      })
+      .sort((a, b) => a.stock - b.stock);
+
+    renderStockAlerts(stockAlerts || []);
+    renderInventoryValueSection();
     
-    console.log('Dashboard: All data loaded successfully');
+    console.log('Dashboard: All data loaded successfully in parallel');
     updatePageDebug('Ready', '#10B981');
     
   } catch (err) {
@@ -206,24 +171,24 @@ function renderRevenueChart(revenueData, purchasesData = []) {
         {
           label: 'Sales Revenue (₹)',
           data: revenueData,
-          borderColor: '#2F7D22',
-          backgroundColor: 'rgba(47, 125, 34, 0.12)',
+          borderColor: '#10B981',
+          backgroundColor: 'rgba(16,185,129,0.12)',
           borderWidth: 2.5,
           fill: true,
           tension: 0.35,
-          pointBackgroundColor: '#2F7D22',
+          pointBackgroundColor: '#10B981',
           pointRadius: 3.5
         },
         {
           label: 'Purchases (₹)',
           data: purchasesData,
-          borderColor: '#F58220',
+          borderColor: '#F59E0B',
           backgroundColor: 'transparent',
           borderWidth: 2,
           borderDash: [5, 5],
           fill: false,
           tension: 0.35,
-          pointBackgroundColor: '#F58220',
+          pointBackgroundColor: '#F59E0B',
           pointRadius: 3
         }
       ]
@@ -236,7 +201,7 @@ function renderRevenueChart(revenueData, purchasesData = []) {
           display: true,
           position: 'top',
           align: 'end',
-          labels: { font: { family: 'Inter', size: 11 }, boxWidth: 10, padding: 8, color: 'var(--text-secondary)' }
+          labels: { font: { family: 'Space Grotesk', size: 11 }, boxWidth: 10, padding: 8, color: 'var(--text-secondary)' }
         },
         tooltip: {
           callbacks: {
@@ -249,13 +214,13 @@ function renderRevenueChart(revenueData, purchasesData = []) {
           beginAtZero: true,
           ticks: {
             callback: v => '₹' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v),
-            font: { family: 'Inter', size: 10 },
+            font: { family: 'Space Grotesk', size: 10 },
             color: 'var(--text-muted)'
           },
-          grid: { color: 'rgba(0,0,0,0.04)' }
+          grid: { color: 'rgba(255,255,255,0.05)' }
         },
         x: {
-          ticks: { font: { family: 'Inter', size: 10 }, color: 'var(--text-muted)' },
+          ticks: { font: { family: 'Space Grotesk', size: 10 }, color: 'var(--text-muted)' },
           grid: { display: false }
         }
       }
@@ -278,7 +243,7 @@ function renderCategoryChart(data) {
       labels: labels.length > 0 ? labels : ['No Data'], 
       datasets: [{ 
         data: values.length > 0 ? values : [1], 
-        backgroundColor: ['#063F2C', '#2F7D22', '#5FAF24', '#F58220', '#0B4A35', '#7D9B89'] 
+        backgroundColor: ['#7C3AED','#10B981','#10B981','#EF4444','#3B82F6','#EC4899'] 
       }] 
     },
     options: { responsive: true, cutout: '70%', plugins: { legend: { display: labels.length > 0 } } }

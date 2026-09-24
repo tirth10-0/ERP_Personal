@@ -604,6 +604,9 @@ async function adjustDailyInventoryStock(itemId, qtyDelta) {
       unit: m.unit || m.base_unit || 'Nos'
     }));
 
+    APP.closeModal('daily-transaction-modal');
+    APP.showToast('Daily entry saved and inventory stock synchronized!', 'success');
+
     if (newMats.length > 0) {
       await window.dbClient.from('daily_transaction_materials').insert(newMats);
       
@@ -613,12 +616,11 @@ async function adjustDailyInventoryStock(itemId, qtyDelta) {
       }
     }
 
-    APP.showToast('Daily entry saved and inventory stock synchronized!', 'success');
-    APP.closeModal('daily-transaction-modal');
-    setTimeout(() => loadDailyTransactions(), 100);
+    await loadDailyTransactions();
   } catch (err) {
     console.error('saveTransaction failed:', err);
     APP.showToast('Error saving transaction: ' + err.message, 'error');
+    loadDailyTransactions();
   }
 }
 

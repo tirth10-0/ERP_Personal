@@ -224,26 +224,28 @@ async function saveExpense() {
       payment_mode: d.payment_mode || 'Cash'
     };
 
+    const isEdit = Boolean(editingExpenseId);
+    APP.closeModal('expense-modal');
+    APP.showToast(isEdit ? 'Expense updated!' : 'Expense added!', 'success');
+
     if (editingExpenseId) {
       const { error } = await window.dbClient
         .from('expenses')
         .update(payload)
         .eq('id', editingExpenseId);
       if (error) throw error;
-      APP.showToast('Expense updated!', 'success');
     } else {
       const { error } = await window.dbClient
         .from('expenses')
         .insert([payload]);
       if (error) throw error;
-      APP.showToast('Expense added!', 'success');
     }
 
-    APP.closeModal('expense-modal');
-    setTimeout(() => loadExpenses(), 100);
+    await loadExpenses();
   } catch (err) {
     console.error('saveExpense failed:', err);
     APP.showToast('Error saving expense: ' + err.message, 'error');
+    loadExpenses();
   }
 }
 

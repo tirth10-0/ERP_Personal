@@ -1038,17 +1038,20 @@ async function saveProduct() {
       // is_base is not in the database schema; it is inferred based on purchase_price > 0
     }));
 
+    const isEdit = Boolean(editingProductId);
+    APP.closeModal('product-modal');
+    APP.showToast(isEdit ? 'Product updated!' : 'Product added!', 'success');
+
     if (pkgPayload.length > 0) {
       const { error: pkgErr } = await window.dbClient.from('product_packaging').insert(pkgPayload);
       if (pkgErr) throw pkgErr;
     }
 
-    APP.showToast(editingProductId ? 'Product updated!' : 'Product added!', 'success');
-    APP.closeModal('product-modal');
-    setTimeout(() => loadProducts(), 100);
+    await loadProducts();
   } catch (err) {
     console.error('saveProduct failed:', err);
     APP.showToast('Error saving product: ' + err.message, 'error');
+    loadProducts();
   }
 }
 

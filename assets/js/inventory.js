@@ -902,13 +902,15 @@ async function saveTechnicalItem() {
       opening_cost: d.opening_cost,
       opening_batch_no: d.opening_batch_no
     };
-    await saveInventoryItemAPI(payload);
-    APP.showToast(editingItemId ? 'Technical updated!' : 'Technical added!', 'success');
+    const isEdit = Boolean(editingItemId);
     APP.closeModal('technical-modal');
-    setTimeout(() => loadInventory(), 100);
+    APP.showToast(isEdit ? 'Technical updated!' : 'Technical added!', 'success');
+    await saveInventoryItemAPI(payload);
+    await loadInventory();
   } catch (err) {
     console.error('saveTechnicalItem failed:', err);
     APP.showToast('Error saving technical item: ' + err.message, 'error');
+    loadInventory();
   }
 }
 
@@ -931,13 +933,15 @@ async function saveBottleItem() {
       opening_cost: d.opening_cost,
       opening_batch_no: d.opening_batch_no
     };
-    await saveInventoryItemAPI(payload);
-    APP.showToast(editingItemId ? 'Bottle updated!' : 'Bottle added!', 'success');
+    const isEdit = Boolean(editingItemId);
     APP.closeModal('bottle-modal');
-    setTimeout(() => loadInventory(), 100);
+    APP.showToast(isEdit ? 'Bottle updated!' : 'Bottle added!', 'success');
+    await saveInventoryItemAPI(payload);
+    await loadInventory();
   } catch (err) {
     console.error('saveBottleItem failed:', err);
     APP.showToast('Error saving bottle: ' + err.message, 'error');
+    loadInventory();
   }
 }
 
@@ -960,13 +964,15 @@ async function saveBoxItem() {
       opening_cost: d.opening_cost,
       opening_batch_no: d.opening_batch_no
     };
-    await saveInventoryItemAPI(payload);
-    APP.showToast(editingItemId ? 'Box updated!' : 'Box added!', 'success');
+    const isEdit = Boolean(editingItemId);
     APP.closeModal('box-modal');
-    setTimeout(() => loadInventory(), 100);
+    APP.showToast(isEdit ? 'Box updated!' : 'Box added!', 'success');
+    await saveInventoryItemAPI(payload);
+    await loadInventory();
   } catch (err) {
     console.error('saveBoxItem failed:', err);
     APP.showToast('Error saving box: ' + err.message, 'error');
+    loadInventory();
   }
 }
 
@@ -989,13 +995,15 @@ async function saveLabelItem() {
       opening_cost: d.opening_cost,
       opening_batch_no: d.opening_batch_no
     };
-    await saveInventoryItemAPI(payload);
-    APP.showToast(editingItemId ? 'Label updated!' : 'Label added!', 'success');
+    const isEdit = Boolean(editingItemId);
     APP.closeModal('label-modal');
-    setTimeout(() => loadInventory(), 100);
+    APP.showToast(isEdit ? 'Label updated!' : 'Label added!', 'success');
+    await saveInventoryItemAPI(payload);
+    await loadInventory();
   } catch (err) {
     console.error('saveLabelItem failed:', err);
     APP.showToast('Error saving label: ' + err.message, 'error');
+    loadInventory();
   }
 }
 
@@ -1012,13 +1020,15 @@ async function saveOtherItem() {
       opening_cost: d.opening_cost,
       opening_batch_no: d.opening_batch_no
     };
-    await saveInventoryItemAPI(payload);
-    APP.showToast(editingItemId ? 'Item updated!' : 'Item added!', 'success');
+    const isEdit = Boolean(editingItemId);
     APP.closeModal('other-modal');
-    setTimeout(() => loadInventory(), 100);
+    APP.showToast(isEdit ? 'Item updated!' : 'Item added!', 'success');
+    await saveInventoryItemAPI(payload);
+    await loadInventory();
   } catch (err) {
     console.error('saveOtherItem failed:', err);
     APP.showToast('Error saving item: ' + err.message, 'error');
+    loadInventory();
   }
 }
 

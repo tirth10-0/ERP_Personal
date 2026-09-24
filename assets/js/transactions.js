@@ -185,26 +185,28 @@ async function saveTxn() {
       account_id: d.account_id ? parseInt(d.account_id, 10) : null
     };
 
+    const isEdit = Boolean(editingTxnId);
+    APP.closeModal('txn-modal');
+    APP.showToast(isEdit ? 'Transaction updated!' : 'Transaction recorded!', 'success');
+
     if (editingTxnId) {
       const { error } = await window.dbClient
         .from('transactions')
         .update(payload)
         .eq('id', editingTxnId);
       if (error) throw error;
-      APP.showToast('Transaction updated!', 'success');
     } else {
       const { error } = await window.dbClient
         .from('transactions')
         .insert([payload]);
       if (error) throw error;
-      APP.showToast('Transaction recorded!', 'success');
     }
 
-    APP.closeModal('txn-modal');
-    setTimeout(() => loadTransactions(), 100);
+    await loadTransactions();
   } catch (err) {
     console.error('saveTxn failed:', err);
     APP.showToast('Error saving transaction: ' + err.message, 'error');
+    loadTransactions();
   }
 }
 

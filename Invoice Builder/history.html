@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="utf-8" />
@@ -381,9 +381,6 @@
             }
         }
     </style>
-
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
@@ -393,7 +390,7 @@
             <a class="back-arrow-tool" href="index.html" title="Back to Builder">
                 <span class="material-symbols-outlined">arrow_back</span>
             </a>
-            <img src="public/logo.jpg" alt="Logo" class="nav-logo" id="navbar-logo" style="height:48px;width:48px;object-fit:contain;border-radius:10px;border:1px solid var(--border);background:#ffffff;padding:2px;" onerror="this.style.display='none'" />
+            <img src="../assets/images/logo.jpg" alt="Logo" class="nav-logo" id="navbar-logo" style="height:48px;width:48px;object-fit:contain;border-radius:10px;border:1px solid var(--border);background:#ffffff;padding:2px;" onerror="this.src='public/logo.jpg'" />
             <div class="brand-text">
                 <span class="brand-name">Anjani Crop Care</span>
             </div>
@@ -470,9 +467,8 @@
 
     <!-- Scripts -->
     <script>
-      // Force clean light theme matching ERP
       try {
-        document.documentElement.setAttribute('data-theme', 'light');
+        document.documentElement.setAttribute('data-theme', 'dark');
       } catch (e) {}
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

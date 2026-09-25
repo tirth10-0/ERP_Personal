@@ -1,4 +1,28 @@
-:root, [data-theme="light"], [data-theme="dark"] {
+:root, [data-theme="dark"] {
+  --bg-main: #0f1512;
+  --bg-card: #16201c;
+  --bg-banner: rgba(31, 46, 40, 0.92);
+  --bg-banner-hover: rgba(143, 220, 76, 0.12);
+  --border: rgba(180, 206, 190, 0.2);
+  --border-light: rgba(180, 206, 190, 0.1);
+  --text-main: #e7f0ea;
+  --text-sub: #b7c9bc;
+  --text-muted: #8ea294;
+  --text-faint: rgba(180, 206, 190, 0.3);
+  --text-dim: #8ea294;
+  --primary: #8fdc4c;
+  --primary-hover: #a6ea67;
+  --accent: #8fdc4c;
+  --accent-light: rgba(143, 220, 76, 0.18);
+  --danger: #ef4444;
+  --danger-text: #ef4444;
+  --paper-bg: #ffffff;
+  --paper-text: #1d2a16;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] {
   --bg-main: #f8f6f1;
   --bg-card: #ffffff;
   --bg-banner: #ffffff;

@@ -519,13 +519,13 @@ function _validateInvoicePayload(data) {
 }
 
 // ─── SHARED UI HELPERS (Theme & Profile) ──────────────────────────────────────
-function applyTheme(theme = 'light') {
-  document.documentElement.setAttribute('data-theme', 'light');
-  safeStorage.setItem('theme', 'light');
+function applyTheme(theme = 'dark') {
+  document.documentElement.setAttribute('data-theme', 'dark');
+  safeStorage.setItem('theme', 'dark');
 }
 
 function toggleTheme() {
-  applyTheme('light');
+  applyTheme('dark');
 }
 
 function showProfileSymbol() {
@@ -545,7 +545,7 @@ function showProfileSymbol() {
 
 // Global initialization for all pages
 window.addEventListener('DOMContentLoaded', () => {
-  applyTheme('light');
+  applyTheme('dark');
   showProfileSymbol();
 
   // ─── GLOBAL TEXT FORMATTING ───────────────────────────────────────────────
@@ -650,4 +650,7 @@ function formatPhone(str) {
   }
   return digits;
 }
+
+window.formatText = formatText;
+window.formatPhone = formatPhone;
 

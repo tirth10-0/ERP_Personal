@@ -18,6 +18,11 @@ function normalizeGSTIN(value) {
   return String(value || '').trim().toUpperCase();
 }
 
+function formatText(str) {
+  if (typeof window.formatText === 'function') return window.formatText(str);
+  return String(str || '').trim();
+}
+
 
 function switchTab(tab) {
   currentTab = tab;

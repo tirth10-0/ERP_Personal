@@ -37,6 +37,7 @@
   <link rel="stylesheet" href="css/main.css?v=1788871655551.0.2" />
   <link rel="stylesheet" href="css/override.css?v=1788871655551.0.2" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/database.js"></script>
 <link rel="icon" type="image/jpeg" href="../assets/images/logo.jpg"></head>
 
 <body>
@@ -51,14 +52,9 @@
   <div id="toolbar">
     <!-- Brand -->
     <div class="toolbar-brand">
-      <div class="brand-logo-icon" style="height:42px;width:42px;display:flex;align-items:center;justify-content:center;background:var(--accent-light);border-radius:8px;padding:4px;border:1px solid var(--border);flex-shrink:0;">
-        <svg viewBox="0 0 100 100" style="width:100%;height:100%;fill:none;stroke:var(--primary);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;">
-          <path d="M35 15 H65 M50 15 V30 M43 30 H57 M30 80 H70 L55 35 V30 H45 V35 L30 80 Z" />
-          <path d="M50 72 C45 62 45 48 50 40 C55 48 55 62 50 72 Z" fill="var(--primary)" />
-        </svg>
-      </div>
+      <img src="../assets/images/logo.jpg" alt="Anjani Crop Care" id="navbar-logo" style="height:38px;width:38px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;" />
       <div class="brand-text">
-        <span class="brand-name" style="font-weight:800;font-size:18px;letter-spacing:-0.3px;color:var(--primary);">AgroChem</span>
+        <span class="brand-name" style="font-weight:800;font-size:18px;letter-spacing:-0.3px;color:var(--primary);">Anjani Crop Care</span>
       </div>
     </div>
 
@@ -174,16 +170,11 @@
 
           <!-- Logo Display -->
           <div class="logo-upload-area" id="logo-upload-area" style="cursor:default; border:none; background:transparent; display:flex; align-items:center; justify-content:center; padding:0; margin-bottom:12px;">
-            <div class="brand-logo-icon" style="height:64px;width:64px;display:flex;align-items:center;justify-content:center;background:var(--accent-light);border-radius:12px;padding:8px;border:1px solid var(--border);">
-              <svg viewBox="0 0 100 100" style="width:100%;height:100%;fill:none;stroke:var(--primary);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;">
-                <path d="M35 15 H65 M50 15 V30 M43 30 H57 M30 80 H70 L55 35 V30 H45 V35 L30 80 Z" />
-                <path d="M50 72 C45 62 45 48 50 40 C55 48 55 62 50 72 Z" fill="var(--primary)" />
-              </svg>
-            </div>
+            <img id="logo-preview-sb" src="../assets/images/logo.jpg" alt="Anjani Crop Care" style="height:64px;width:64px;object-fit:cover;border-radius:12px;border:1px solid var(--border);box-shadow:var(--shadow-sm);display:block;" />
           </div>
 
           <span class="sb-label">Company Name</span>
-          <input class="sb-input" id="s-company" placeholder="Company Name" maxlength="60" value="AgroChem" />
+          <input class="sb-input" id="s-company" placeholder="Company Name" maxlength="60" value="Anjani Crop Care" />
           <span class="sb-label">Address</span>
           <input class="sb-input" id="s-address" placeholder="Street, City, State - PIN"
             value="Survey No.207/1, Nr. Balaji Agro, Shapar, Rajkot, Gujarat - 360024" />
@@ -204,7 +195,7 @@
             </div>
             <div>
               <span class="sb-label">Authorized By</span>
-              <input class="sb-input" id="s-signatory" placeholder="Name" value="AgroChem" />
+              <input class="sb-input" id="s-signatory" placeholder="Name" value="Anjani Crop Care" />
             </div>
           </div>
         </div>
@@ -367,26 +358,21 @@ Wednesday and Sunday Company Holiday.</textarea>
         <!-- HEADER: Logo | Company (center) | Invoice Box -->
         <div class="paper-header">
           <div class="paper-logo-section" style="display:flex;align-items:center;justify-content:center;">
-            <div class="brand-logo-icon" style="height:64px;width:64px;display:flex;align-items:center;justify-content:center;background:var(--accent-light);border-radius:12px;padding:8px;border:1px solid var(--border);flex-shrink:0;">
-              <svg viewBox="0 0 100 100" style="width:100%;height:100%;fill:none;stroke:var(--primary);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;">
-                <path d="M35 15 H65 M50 15 V30 M43 30 H57 M30 80 H70 L55 35 V30 H45 V35 L30 80 Z" />
-                <path d="M50 72 C45 62 45 48 50 40 C55 48 55 62 50 72 Z" fill="var(--primary)" />
-              </svg>
-            </div>
+            <img id="paper-logo" src="../assets/images/logo.jpg" alt="Anjani Crop Care" style="height:64px;width:64px;object-fit:cover;border-radius:10px;border:1px solid var(--border);display:block;" />
           </div>
           <div class="paper-company-center">
-            <div class="paper-company-name" id="p-company">AgroChem</div>
+            <div class="paper-company-name" id="p-company">Anjani Crop Care</div>
             <div class="paper-company-sub">
               <span id="p-address">Survey No.207/1, Nr. Balaji Agro, Shapar, Rajkot, Gujarat - 360024</span><br />
-              <span id="p-phone">â€”</span><span id="p-email-phone-sep"> &nbsp;|&nbsp; </span><span id="p-email">skagro3105@gmail.com</span><br />
+              <span id="p-phone">—</span><span id="p-email-phone-sep"> &nbsp;|&nbsp; </span><span id="p-email">skagro3105@gmail.com</span><br />
               GSTIN: <span id="p-gstin">24AERFS1718Q1ZB</span>
             </div>
           </div>
           <div class="paper-invoice-box">
             <div class="invoice-badge">INVOICE</div>
             <div class="paper-meta">
-              Invoice No: <strong id="p-inv-num">â€”</strong><br />
-              Date: <strong id="p-inv-date">â€”</strong><br />
+              Invoice No: <strong id="p-inv-num">—</strong><br />
+              Date: <strong id="p-inv-date">—</strong><br />
               <span id="p-due-line" style="display:none">Due: <strong id="p-due-date"></strong><br /></span>
             </div>
           </div>
@@ -401,7 +387,7 @@ Wednesday and Sunday Company Holiday.</textarea>
         <div class="paper-to">
           <div>
             <div class="to-label">Bill From</div>
-            <div class="to-main" id="p-from-name">AgroChem</div>
+            <div class="to-main" id="p-from-name">Anjani Crop Care</div>
             <div class="to-sub" id="p-from-sub">Survey No.207/1, Nr. Balaji Agro, Shapar, Rajkot, Gujarat - 360024</div>
           </div>
           <div>
@@ -486,7 +472,7 @@ Wednesday and Sunday Company Holiday.</textarea>
             <img id="sig-img" src="signature.jpg" alt="Signature"
               style="max-width:120px;max-height:40px;margin-bottom:6px;border-radius:4px;border:1px solid #e2e8f0;display:block;margin:0 auto;"
               onerror="this.style.display='none'" />
-            <div class="sig-name" id="p-signatory">AgroChem</div>
+            <div class="sig-name" id="p-signatory">Anjani Crop Care</div>
           </div>
         </div>
 

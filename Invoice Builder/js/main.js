@@ -24,6 +24,7 @@ function normalizeText(value) {
 }
 
 function normalizeBusinessName(value) {
+  if (!value || value === 'AgroChem' || value === 'Agro Chem') return 'Anjani Crop Care';
   return value;
 }
 
@@ -80,9 +81,9 @@ function getPriceForPackaging(brand, product, packaging) {
   const productKey = normalizeText(product);
   const packagingKey = normalizeText(packaging);
   const match = inventoryData.find(item =>
-    normalizeText(item.brand || item.BrandName) === brandKey &&
+    (!brandKey || normalizeText(item.brand || item.BrandName) === brandKey) &&
     normalizeText(item.product || item.ProductName) === productKey &&
-    normalizeText(item.packaging || item.PackagingSize) === packagingKey
+    (!packagingKey || normalizeText(item.packaging || item.PackagingSize) === packagingKey)
   );
   if (!match) return '';
   return (match.price || match.Price || '').toString().trim();
@@ -301,29 +302,177 @@ function savePdfBlob(pdf, filename) {
   }, 1000);
 }
 
+function getSupabaseClient() {
+  if (window.dbClient) return window.dbClient;
+  if (typeof window.supabase !== 'undefined' && window.supabase?.createClient) {
+    const supabaseUrl = 'https://jtbettizhwwqmuyofapm.supabase.co';
+    const supabaseKey = 'sb_publishable_kSf8e6RD96lT40di2YqxxQ_gJ3WS6ve';
+    try {
+      window.dbClient = window.supabase.createClient(supabaseUrl, supabaseKey, {
+        auth: {
+          storage: window.localStorage
+        }
+      });
+      return window.dbClient;
+    } catch (e) {
+      console.warn('Supabase initialization error in Invoice Builder:', e);
+    }
+  }
+  return null;
+}
+
+async function loadDefaultLogo() {
+  const candidates = ['../assets/images/logo.jpg', 'public/logo.jpg', 'logo.jpg'];
+  const sbImg = $('logo-preview-sb');
+  const paperImg = $('paper-logo');
+  const navImg = $('navbar-logo');
+
+  [sbImg, paperImg, navImg].forEach(el => {
+    if (el) {
+      if (!el.src || el.src.includes('undefined')) el.src = '../assets/images/logo.jpg';
+      el.style.display = 'block';
+    }
+  });
+
+  for (const path of candidates) {
+    try {
+      const resp = await fetch(path);
+      if (!resp.ok) continue;
+      const blob = await resp.blob();
+      await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          logoDataUrl = ev.target.result;
+          if (sbImg) sbImg.src = logoDataUrl;
+          if (paperImg) paperImg.src = logoDataUrl;
+          if (navImg) navImg.src = logoDataUrl;
+          resolve();
+        };
+        reader.onerror = () => resolve();
+        reader.readAsDataURL(blob);
+      });
+      if (logoDataUrl) return;
+    } catch {
+      // try next candidate
+    }
+  }
+
+  if (!logoDataUrl) {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = function() {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width || 200;
+          canvas.height = img.naturalHeight || img.height || 200;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          logoDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+          if (sbImg) sbImg.src = logoDataUrl;
+          if (paperImg) paperImg.src = logoDataUrl;
+          if (navImg) navImg.src = logoDataUrl;
+        } catch { }
+      };
+      img.src = '../assets/images/logo.jpg';
+    } catch { }
+  }
+}
+
 async function fetchInventory() {
+  try {
+    const sb = getSupabaseClient();
+    if (sb) {
+      const [prodRes, packRes] = await Promise.all([
+        sb.from('products').select('*'),
+        sb.from('product_packaging').select('*')
+      ]);
+
+      if (!prodRes.error && Array.isArray(prodRes.data)) {
+        const prodData = prodRes.data;
+        const packData = (!packRes.error && Array.isArray(packRes.data)) ? packRes.data : [];
+
+        const pkgByProd = {};
+        for (const pkg of packData) {
+          if (!pkgByProd[pkg.product_id]) pkgByProd[pkg.product_id] = [];
+          pkgByProd[pkg.product_id].push(pkg);
+        }
+
+        const items = [];
+        for (const prod of prodData) {
+          const pkgs = pkgByProd[prod.id];
+          if (pkgs && pkgs.length > 0) {
+            for (const pkg of pkgs) {
+              items.push({
+                ProductID: String(prod.id),
+                brand: String(prod.brand || '').trim(),
+                product: String(prod.name || '').trim(),
+                packaging: String(pkg.packaging_size || prod.unit || '').trim(),
+                price: String(pkg.sell_price != null ? pkg.sell_price : (prod.sell_price || 0)),
+                hsn: String(prod.gst || '').trim()
+              });
+            }
+          } else {
+            items.push({
+              ProductID: String(prod.id),
+              brand: String(prod.brand || '').trim(),
+              product: String(prod.name || '').trim(),
+              packaging: String(prod.unit || '').trim(),
+              price: String(prod.sell_price || 0),
+              hsn: String(prod.gst || '').trim()
+            });
+          }
+        }
+        inventoryData = items.filter(item => item.brand || item.product || item.packaging);
+        return inventoryData;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load inventory from Supabase, attempting fallback:', err);
+  }
+
   try {
     const response = await getProducts();
     const data = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
     inventoryData = data.map(normalizeProductRow).filter(item => item.brand || item.product || item.packaging);
     return inventoryData;
   } catch (err) {
-    console.warn('Failed to load products from Google Sheets:', err.message);
-    inventoryData = [];
-    return [];
+    console.warn('Failed to load products from fallback:', err.message);
+    if (!inventoryData.length) inventoryData = [];
+    return inventoryData;
   }
 }
 
 async function fetchClients() {
+  try {
+    const sb = getSupabaseClient();
+    if (sb) {
+      const { data, error } = await sb.from('clients').select('*');
+      if (!error && Array.isArray(data)) {
+        clientsData = data.map(c => ({
+          ClientID: String(c.id || '').trim(),
+          ClientName: String(c.name || '').trim(),
+          Address: [c.address, c.city].filter(Boolean).join(', ').trim(),
+          Phone: String(c.contact || '').trim(),
+          GSTIN: String(c.gst || '').trim().toUpperCase(),
+          DueAmount: parseFloat(c.balance) || 0
+        })).filter(c => c.ClientName || c.Phone);
+        return clientsData;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load clients from Supabase, attempting fallback:', err);
+  }
+
   try {
     const response = await getClients();
     const data = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
     clientsData = data.map(normalizeClientRow).filter(item => item.ClientName || item.Phone);
     return clientsData;
   } catch (err) {
-    console.warn('Failed to load clients from Google Sheets:', err.message);
-    clientsData = [];
-    return [];
+    console.warn('Failed to load clients from fallback:', err.message);
+    if (!clientsData.length) clientsData = [];
+    return clientsData;
   }
 }
 
@@ -1219,8 +1368,11 @@ function renderDropdown(items, inputEl, rid) {
       if (price) {
         div.innerHTML += `<div class="autocomplete-price">₹${price}</div>`;
       }
-    } else if (item.data && item.data.GSTIN) {
-      div.innerHTML += `<div class="autocomplete-desc">${esc(item.data.Phone || '')} | ${esc(item.data.GSTIN || '')}</div>`;
+    } else if (item.type === 'client' && item.data) {
+      const parts = [item.data.Phone, item.data.GSTIN, item.data.Address].filter(Boolean);
+      if (parts.length) {
+        div.innerHTML += `<div class="autocomplete-desc">${esc(parts.join(' | '))}</div>`;
+      }
     }
 
     div.addEventListener('mousedown', e => {

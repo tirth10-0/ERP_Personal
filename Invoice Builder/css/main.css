@@ -1,43 +1,19 @@
-:root, [data-theme="dark"] {
-  --bg-main: #0f1512;
-  --bg-card: #16201c;
-  --bg-banner: rgba(31, 46, 40, 0.92);
-  --bg-banner-hover: rgba(143, 220, 76, 0.1);
-  --border: rgba(180, 206, 190, 0.2);
-  --border-light: rgba(180, 206, 190, 0.1);
-  --text-main: #e7f0ea;
-  --text-sub: #b7c9bc;
-  --text-muted: #8ea294;
-  --text-faint: rgba(180, 206, 190, 0.3);
-  --text-dim: #8ea294;
-  --primary: #8fdc4c;
-  --primary-hover: #a6ea67;
-  --accent: #8fdc4c;
-  --accent-light: rgba(143,220,76,0.18);
-  --danger: #ef4444;
-  --danger-text: #ef4444;
-  --paper-bg: #ffffff;
-  --paper-text: #1d2a16;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.5);
-}
-
-[data-theme="light"] {
+:root, [data-theme="light"], [data-theme="dark"] {
   --bg-main: #f8f6f1;
   --bg-card: #ffffff;
-  --bg-banner: rgba(255, 255, 255, 0.92);
+  --bg-banner: #ffffff;
   --bg-banner-hover: rgba(63, 107, 20, 0.08);
-  --border: rgba(38, 61, 25, 0.12);
-  --border-light: rgba(38, 61, 25, 0.06);
+  --border: rgba(38, 61, 25, 0.14);
+  --border-light: rgba(38, 61, 25, 0.08);
   --text-main: #1d2a16;
   --text-sub: #5f6d47;
-  --text-muted: rgba(29, 37, 21, 0.64);
+  --text-muted: rgba(29, 37, 21, 0.65);
   --text-faint: rgba(29, 37, 21, 0.32);
-  --text-dim: rgba(29, 37, 21, 0.64);
+  --text-dim: rgba(29, 37, 21, 0.65);
   --primary: #3f6b14;
-  --primary-hover: #588125;
+  --primary-hover: #2f5b12;
   --accent: #3f6b14;
-  --accent-light: rgba(63,107,20,0.14);
+  --accent-light: rgba(63, 107, 20, 0.12);
   --danger: #dc2626;
   --danger-text: #dc2626;
   --paper-bg: #ffffff;
@@ -860,7 +836,7 @@ input[type="number"] {
   gap: 12px;
   margin-bottom: 28px;
   padding-bottom: 24px;
-  border-bottom: 3px solid #10b981;
+  border-bottom: 3px solid var(--primary);
 }
 
 .paper-logo-section {
@@ -868,6 +844,14 @@ input[type="number"] {
   align-items: center;
   flex-shrink: 0;
   justify-self: start;
+}
+
+.paper-logo-section img {
+  max-width: 140px;
+  max-height: 105px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 /* CENTER column: company name + details */

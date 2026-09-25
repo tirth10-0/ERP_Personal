@@ -17,6 +17,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block"
     rel="stylesheet" />
   <!-- App Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/database.js"></script>
   <script src="js/api.js?v=1788871655551.0.2"></script>
   <script src="js/storage.js?v=1788871655551.0.2"></script>
   <!-- Styles -->
@@ -477,8 +479,9 @@
         display: none;
       }
     }
-  </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/database.js"></script>
+  <script src="js/api.js?v=1788871655551.0.2"></script>
 </head>
 
 <body>
@@ -491,7 +494,7 @@
       <a class="back-arrow-tool" href="index.html" title="Back to Builder">
         <span class="material-symbols-outlined">arrow_back</span>
       </a>
-      <img src="public/logo.jpg" alt="Logo" class="nav-logo" id="navbar-logo" onerror="this.style.display='none'" />
+      <img src="public/logo.jpg" alt="Logo" class="nav-logo" id="navbar-logo" style="height:48px;width:48px;object-fit:contain;border-radius:10px;border:1px solid var(--border);background:#ffffff;padding:2px;" onerror="this.style.display='none'" />
       <div class="brand-text">
         <span class="brand-name">Anjani Crop Care</span>
       </div>
@@ -507,9 +510,6 @@
       <a class="btn btn-ghost erp-dash-btn" href="../pages/dashboard.html" style="font-size: 13px; padding: 6px 10px; display: flex; align-items: center; gap: 6px; text-decoration: none; color: inherit;" title="ERP Dashboard">
         <span class="material-symbols-outlined">dashboard</span><span class="erp-label"> ERP Dashboard</span>
       </a>
-      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-        <span id="theme-icon" class="material-symbols-outlined">light_mode</span>
-      </button>
     </div>
   </div>
 
@@ -683,12 +683,10 @@
   <!-- MAIN SCRIPT -->
   <script src="js/master.js?v=1788871655551.0.2"></script>
   <script>
-    // Load current theme safely
+    // Force clean light theme matching ERP
     try {
-      document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
-    } catch (e) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
+      document.documentElement.setAttribute('data-theme', 'light');
+    } catch (e) {}
     // Force GSTIN to uppercase
     document.addEventListener('DOMContentLoaded', () => {
       const gEl = document.getElementById('client-gstin');

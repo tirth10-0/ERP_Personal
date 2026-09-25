@@ -1,35 +1,272 @@
+// ─── SUPABASE HELPER ──────────────────────────────────────────
+function getSupabaseClient() {
+  if (window.dbClient) return window.dbClient;
+  if (typeof window.supabase !== 'undefined' && window.supabase?.createClient) {
+    const supabaseUrl = 'https://jtbettizhwwqmuyofapm.supabase.co';
+    const supabaseKey = 'sb_publishable_kSf8e6RD96lT40di2YqxxQ_gJ3WS6ve';
+    try {
+      window.dbClient = window.supabase.createClient(supabaseUrl, supabaseKey, {
+        auth: { storage: window.localStorage }
+      });
+      return window.dbClient;
+    } catch (e) {
+      console.warn('Supabase init in api.js error:', e);
+    }
+  }
+  return null;
+}
+
 // ─── PRODUCT API ─────────────────────────────────────────
 async function getProducts() {
-  return await _apiFetch({ action: 'getProducts' });
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      const [prodRes, packRes] = await Promise.all([
+        sb.from('products').select('*'),
+        sb.from('product_packaging').select('*')
+      ]);
+      if (!prodRes.error && Array.isArray(prodRes.data)) {
+        const prodData = prodRes.data;
+        const packData = packRes.data || [];
+        const pkgByProd = {};
+        for (const pk of packData) {
+          if (!pkgByProd[pk.product_id]) pkgByProd[pk.product_id] = [];
+          pkgByProd[pk.product_id].push(pk);
+        }
+
+        const list = [];
+        for (const p of prodData) {
+          const pkgs = pkgByProd[p.id];
+          if (pkgs && pkgs.length > 0) {
+            for (const pk of pkgs) {
+              list.push({
+                ProductID: String(p.id),
+                id: p.id,
+                BrandName: p.brand || '',
+                brand: p.brand || '',
+                ProductName: p.name || '',
+                product: p.name || '',
+                name: p.name || '',
+                PackagingSize: pk.packaging_size || p.unit || '',
+                packaging: pk.packaging_size || p.unit || '',
+                UnitPrice: pk.sell_price != null ? pk.sell_price : (p.sell_price || 0),
+                price: pk.sell_price != null ? pk.sell_price : (p.sell_price || 0),
+                hsn: p.gst || ''
+              });
+            }
+          } else {
+            list.push({
+              ProductID: String(p.id),
+              id: p.id,
+              BrandName: p.brand || '',
+              brand: p.brand || '',
+              ProductName: p.name || '',
+              product: p.name || '',
+              name: p.name || '',
+              PackagingSize: p.unit || '',
+              packaging: p.unit || '',
+              UnitPrice: p.sell_price || 0,
+              price: p.sell_price || 0,
+              hsn: p.gst || ''
+            });
+          }
+        }
+        return list;
+      }
+    } catch (e) {
+      console.warn('getProducts Supabase error:', e);
+    }
+  }
+  return [];
 }
+
 async function addProduct(product) {
-  return await _apiFetch({ action: 'addProduct' }, product);
+  const sb = getSupabaseClient();
+  if (!sb) throw new Error('Database connection not available');
+  const name = (product.ProductName || product.product || product.name || '').trim();
+  const brand = (product.BrandName || product.brand || '').trim();
+  const packaging = (product.PackagingSize || product.packaging || product.size || '').trim();
+  const price = parseFloat(product.UnitPrice || product.price || 0) || 0;
+
+  if (!name) throw new Error('Product name is required');
+
+  let prodId = null;
+  const { data: existing } = await sb.from('products').select('id').eq('name', name).limit(1);
+  if (existing && existing.length > 0) {
+    prodId = existing[0].id;
+  } else {
+    const prodPayload = {
+      name: name,
+      brand: brand,
+      unit: packaging || 'Kg',
+      sell_price: price,
+      category: 'Finished Good',
+      status: 'Active'
+    };
+    const { data: ins, error: pErr } = await sb.from('products').insert([prodPayload]).select();
+    if (pErr) throw new Error(pErr.message || 'Failed to create product');
+    prodId = ins[0].id;
+  }
+
+  if (packaging) {
+    const { error: pkErr } = await sb.from('product_packaging').insert([{
+      product_id: prodId,
+      packaging_size: packaging,
+      sell_price: price,
+      purchase_price: 0
+    }]);
+    if (pkErr) console.warn('Packaging insert note:', pkErr.message);
+  }
+
+  return { success: true, id: prodId };
 }
+
 async function updateProduct(product) {
-  return await _apiFetch({ action: 'updateProduct' }, product);
+  const sb = getSupabaseClient();
+  if (!sb) throw new Error('Database connection not available');
+  const rawId = product.id || product.ProductID;
+  const numId = parseInt(String(rawId).replace(/\D/g, ''), 10);
+  if (!numId) throw new Error('Valid Product ID is required for update');
+
+  const name = (product.ProductName || product.product || product.name || '').trim();
+  const brand = (product.BrandName || product.brand || '').trim();
+  const packaging = (product.PackagingSize || product.packaging || product.size || '').trim();
+  const price = parseFloat(product.UnitPrice || product.price || 0) || 0;
+
+  const prodPayload = {
+    name: name,
+    brand: brand,
+    sell_price: price
+  };
+  if (packaging) prodPayload.unit = packaging;
+
+  const { error: pErr } = await sb.from('products').update(prodPayload).eq('id', numId);
+  if (pErr) throw new Error(pErr.message || 'Failed to update product');
+
+  if (packaging) {
+    const { data: pkgs } = await sb.from('product_packaging').select('id, packaging_size').eq('product_id', numId);
+    const existingPkg = (pkgs || []).find(pk => (pk.packaging_size || '').toLowerCase() === packaging.toLowerCase());
+    if (existingPkg) {
+      await sb.from('product_packaging').update({ sell_price: price }).eq('id', existingPkg.id);
+    } else {
+      await sb.from('product_packaging').insert([{
+        product_id: numId,
+        packaging_size: packaging,
+        sell_price: price,
+        purchase_price: 0
+      }]);
+    }
+  }
+
+  return { success: true };
 }
-async function deleteProduct(productName) {
-  return await _apiFetch({ action: 'deleteProduct', productName });
+
+async function deleteProduct(idOrObj) {
+  const sb = getSupabaseClient();
+  if (!sb) throw new Error('Database connection not available');
+  const rawId = typeof idOrObj === 'object' ? (idOrObj.ProductID || idOrObj.id || idOrObj.productName) : idOrObj;
+  const numId = parseInt(String(rawId).replace(/\D/g, ''), 10);
+  if (!numId) throw new Error('Valid Product ID is required for deletion');
+
+  await sb.from('product_packaging').delete().eq('product_id', numId);
+  const { error } = await sb.from('products').delete().eq('id', numId);
+  if (error) throw new Error(error.message || 'Failed to delete product');
+  return { success: true };
 }
+
 async function searchProduct(query) {
-  return await _apiFetch({ action: 'searchProduct', query });
+  const prods = await getProducts();
+  const q = String(query || '').toLowerCase().trim();
+  if (!q) return prods;
+  return prods.filter(p => (p.ProductName || '').toLowerCase().includes(q) || (p.BrandName || '').toLowerCase().includes(q));
 }
 
 // ─── CLIENT API ──────────────────────────────────────────
 async function getClients() {
-  return await _apiFetch({ action: 'getClients' });
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      const { data, error } = await sb.from('clients').select('*');
+      if (!error && Array.isArray(data)) {
+        return data.map(c => ({
+          ClientID: String(c.id || ''),
+          id: c.id,
+          ClientName: c.name || '',
+          name: c.name || '',
+          Address: [c.address, c.city].filter(Boolean).join(', '),
+          address: [c.address, c.city].filter(Boolean).join(', '),
+          Phone: c.contact || '',
+          phone: c.contact || '',
+          GSTIN: (c.gst || '').toUpperCase(),
+          gst: (c.gst || '').toUpperCase(),
+          DueAmount: parseFloat(c.balance) || 0,
+          due: parseFloat(c.balance) || 0
+        }));
+      }
+    } catch (e) {
+      console.warn('getClients Supabase error:', e);
+    }
+  }
+  return [];
 }
+
 async function addClient(client) {
-  return await _apiFetch({ action: 'addClient' }, client);
+  const sb = getSupabaseClient();
+  if (!sb) throw new Error('Database connection not available');
+  const cname = (client.ClientName || client.name || '').trim();
+  if (!cname) throw new Error('Client Name is required');
+
+  const payload = {
+    name: cname,
+    address: (client.Address || client.address || '').trim(),
+    contact: (client.Phone || client.phone || '').trim(),
+    gst: (client.GSTIN || client.gstin || '').trim().toUpperCase(),
+    balance: parseFloat(client.DueAmount || client.due || 0) || 0,
+    type: 'Retailer'
+  };
+
+  const { data, error } = await sb.from('clients').insert([payload]).select();
+  if (error) throw new Error(error.message || 'Failed to save client');
+  return { success: true, data: data ? data[0] : null };
 }
+
 async function updateClient(client) {
-  return await _apiFetch({ action: 'updateClient' }, client);
+  const sb = getSupabaseClient();
+  if (!sb) throw new Error('Database connection not available');
+  const rawId = client.id || client.ClientID;
+  const numId = parseInt(String(rawId).replace(/\D/g, ''), 10);
+  if (!numId) throw new Error('Valid Client ID is required for update');
+
+  const payload = {
+    name: (client.ClientName || client.name || '').trim(),
+    address: (client.Address || client.address || '').trim(),
+    contact: (client.Phone || client.phone || '').trim(),
+    gst: (client.GSTIN || client.gstin || '').trim().toUpperCase(),
+    balance: parseFloat(client.DueAmount || client.due || 0) || 0
+  };
+
+  const { error } = await sb.from('clients').update(payload).eq('id', numId);
+  if (error) throw new Error(error.message || 'Failed to update client');
+  return { success: true };
 }
-async function deleteClient(phone) {
-  return await _apiFetch({ action: 'deleteClient', phone });
+
+async function deleteClient(idOrObj) {
+  const sb = getSupabaseClient();
+  if (!sb) throw new Error('Database connection not available');
+  const rawId = typeof idOrObj === 'object' ? (idOrObj.ClientID || idOrObj.id || idOrObj.phone) : idOrObj;
+  const numId = parseInt(String(rawId).replace(/\D/g, ''), 10);
+  if (!numId) throw new Error('Valid Client ID is required for deletion');
+
+  const { error } = await sb.from('clients').delete().eq('id', numId);
+  if (error) throw new Error(error.message || 'Failed to delete client');
+  return { success: true };
 }
+
 async function searchClient(query) {
-  return await _apiFetch({ action: 'searchClient', query });
+  const list = await getClients();
+  const q = String(query || '').toLowerCase().trim();
+  if (!q) return list;
+  return list.filter(c => (c.ClientName || '').toLowerCase().includes(q) || (c.Phone || '').includes(q));
 }
 
 // Export API
@@ -51,6 +288,7 @@ const api = {
   apiDeleteInvoice,
   apiGetNextInvoiceNumber,
 };
+window.api = api;
 /* ==========================================================================
    api.js  —  Google Apps Script backend communication layer
    Invoice System
@@ -149,174 +387,128 @@ async function _apiFetch(params = {}, body = null) {
  * @returns {Promise<Array>} Array of invoice summary objects.
  */
 async function apiGetInvoices(filters = {}) {
-  const params = { action: 'getInvoiceHistory', ...filters };
-  const result = await _apiFetch(params);
-  const data = result.data || [];
-  // Ensure we map the invoice number from different possible DB keys
-  return data.map(inv => {
-    // Coerce to string to avoid comparison errors later
-    const invNumStr = String(inv.InvoiceNumber || inv.invoiceNumber || inv.inv_num || inv.Number || inv['Invoice #'] || '—').trim();
-    // Normalize dates (strip time like T00:00:00Z) to YYYY-MM-DD for HTML input boxes
-    const rawDate = String(inv.date || inv.Date || '');
-    const cleanDate = rawDate.match(/^\d{4}-\d{2}-\d{2}/) ? rawDate.substring(0, 10) : rawDate;
+  try {
+    const raw = safeStorage.getItem('invoice_history_cache');
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        return list.map(inv => {
+          const invNumStr = String(inv.InvoiceNumber || inv.invoiceNumber || inv.inv_num || inv.Number || inv['Invoice #'] || '—').trim();
+          const rawDate = String(inv.date || inv.Date || '');
+          const cleanDate = rawDate.match(/^\d{4}-\d{2}-\d{2}/) ? rawDate.substring(0, 10) : rawDate;
+          const rawDue = String(inv.dueDate || inv.DueDate || '');
+          const cleanDue = rawDue.match(/^\d{4}-\d{2}-\d{2}/) ? rawDue.substring(0, 10) : rawDue;
 
-    const rawDue = String(inv.dueDate || inv.DueDate || '');
-    const cleanDue = rawDue.match(/^\d{4}-\d{2}-\d{2}/) ? rawDue.substring(0, 10) : rawDue;
-
-    return {
-      ...inv,
-      invoiceNumber: invNumStr,
-      uniqueId: String(inv.uniqueId || invNumStr),
-      customerName: String(inv.customerName || inv.ClientName || 'Unknown'),
-      date: cleanDate || '—',
-      dueDate: cleanDue || '',
-      totalAmount: parseFloat(inv.totalAmount || inv.GrandTotal || 0),
-      mobile: String(inv.mobile || inv.Phone || inv.ClientPhone || '')
-    };
-  });
-}
-
-
-/**
- * GET /invoice?id=xxx — Load a single invoice with full JSON.
- * @param {string} uniqueId  The invoice's uniqueId (e.g. "INV-20250317-A3F2")
- * @returns {Promise<object>} Full invoice JSON object.
- */
-async function apiGetInvoice(uniqueId) {
-  if (!uniqueId) throw new Error('Invoice ID is required.');
-  let lastError;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const result = await _apiFetch({ action: 'getInvoice', id: uniqueId });
-      if (!result.data) throw new Error('Invoice data empty in response');
-      return result.data;
-    } catch (err) {
-      lastError = err;
-      try {
-        const history = await apiGetInvoices();
-        const tid = String(uniqueId).trim();
-        const match = history.find(i =>
-          String(i.uniqueId).trim() === tid ||
-          String(i.invoiceNumber).trim() === tid ||
-          String(i.InvoiceNumber).trim() === tid
-        );
-        if (match) {
           return {
-            meta: {
-              uniqueId: match.uniqueId || uniqueId,
-              invoiceNumber: match.invoiceNumber || match.InvoiceNumber,
-              date: match.date || match.Date,
-              dueDate: match.dueDate || match.DueDate || ''
-            },
-            customer: {
-              name: match.customerName || match.ClientName || '',
-              address: match.customerAddress || match.Address || '',
-              phone: match.customerPhone || match.Phone || match.mobile || '',
-              gstin: match.customerGstin || match.GSTIN || match.Gstin || '',
-              dueAmount: parseFloat(match.dueAmount || match.DueAmount || 0)
-            },
-            rows: match.ItemsJSON ? JSON.parse(match.ItemsJSON) : [],
-            calculations: {
-              subtotal: parseFloat(match.Subtotal || 0),
-              tax: parseFloat(match.Tax || 0),
-              grandTotal: parseFloat(match.GrandTotal || match.totalAmount || 0)
-            }
+            ...inv,
+            invoiceNumber: invNumStr,
+            uniqueId: String(inv.uniqueId || invNumStr),
+            customerName: String(inv.customerName || inv.ClientName || 'Unknown'),
+            date: cleanDate || '—',
+            dueDate: cleanDue || '',
+            totalAmount: parseFloat(inv.totalAmount || inv.GrandTotal || 0),
+            mobile: String(inv.mobile || inv.Phone || inv.ClientPhone || '')
           };
-        }
-      } catch (e) {
-        console.warn('History fallback failed:', e);
-      }
-      if (attempt === 0) {
-        await new Promise(r => setTimeout(r, 1200));
+        });
       }
     }
-  }
-  throw lastError;
+  } catch (e) {}
+  return [];
 }
 
+async function apiGetInvoice(uniqueId) {
+  if (!uniqueId) throw new Error('Invoice ID is required.');
+  try {
+    const raw = safeStorage.getItem('inv_doc_' + uniqueId);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
 
-/**
- * POST /invoice — Save a new invoice.
- * @param {object} invoiceData  Full invoice JSON (see storage.js → buildInvoiceJSON).
- * @returns {Promise<object>} { success, uniqueId, invoiceNumber, row }
- */
+  const history = await apiGetInvoices();
+  const tid = String(uniqueId).trim();
+  const match = history.find(i =>
+    String(i.uniqueId).trim() === tid ||
+    String(i.invoiceNumber).trim() === tid ||
+    String(i.InvoiceNumber).trim() === tid
+  );
+  if (match) return match;
+  throw new Error('Invoice not found: ' + uniqueId);
+}
+
 async function apiSaveInvoice(invoiceData) {
   _validateInvoicePayload(invoiceData);
-  const result = await _apiFetch({ action: 'saveInvoice' }, invoiceData);
-  return result;
-}
+  const uniqueId = invoiceData.meta?.uniqueId || ('INV-' + Date.now().toString(36).toUpperCase());
+  invoiceData.meta = invoiceData.meta || {};
+  invoiceData.meta.uniqueId = uniqueId;
 
+  // Persist the full document payload in safeStorage
+  safeStorage.setItem('inv_doc_' + uniqueId, JSON.stringify(invoiceData));
 
-/**
- * POST /invoice (update) — Update an existing invoice.
- * @param {object} invoiceData  Full invoice JSON including meta.uniqueId.
- * @returns {Promise<object>} { success, uniqueId }
- */
-async function apiUpdateInvoice(invoiceData) {
-  _validateInvoicePayload(invoiceData);
-  if (!invoiceData || !invoiceData.meta.uniqueId) {
-    throw new Error('Invalid payload: uniqueId missing.');
+  // Update history cache list
+  let history = [];
+  try {
+    history = JSON.parse(safeStorage.getItem('invoice_history_cache') || '[]');
+  } catch (e) { history = []; }
+
+  const summary = {
+    uniqueId: uniqueId,
+    invoiceNumber: invoiceData.InvoiceNumber || invoiceData.meta?.invoiceNumber || uniqueId,
+    date: invoiceData.meta?.date || new Date().toISOString().substring(0, 10),
+    dueDate: invoiceData.meta?.dueDate || '',
+    customerName: invoiceData.customer?.name || invoiceData.ClientName || 'Unnamed Client',
+    mobile: invoiceData.customer?.phone || invoiceData.Phone || '',
+    totalAmount: parseFloat(invoiceData.calculations?.grandTotal || invoiceData.GrandTotal || 0) || 0
+  };
+
+  const existingIdx = history.findIndex(h => h.uniqueId === uniqueId);
+  if (existingIdx >= 0) {
+    history[existingIdx] = { ...history[existingIdx], ...summary };
+  } else {
+    history.unshift(summary);
   }
-  const result = await _apiFetch({ action: 'saveInvoice' }, invoiceData);
-  return result;
+  safeStorage.setItem('invoice_history_cache', JSON.stringify(history));
+
+  return { success: true, uniqueId, invoiceNumber: summary.invoiceNumber, row: 1 };
 }
 
+async function apiUpdateInvoice(invoiceData) {
+  return await apiSaveInvoice(invoiceData);
+}
 
-/**
- * POST /invoice?action=deleteInvoice — Delete an invoice.
- * @param {string} uniqueId The ID to delete.
- */
 async function apiDeleteInvoice(uniqueId) {
   if (!uniqueId) throw new Error('Invoice ID is required for deletion.');
-  // Map to InvoiceNumber as backend uses that for identification
-  const result = await _apiFetch({ action: 'deleteInvoice' }, { InvoiceNumber: uniqueId });
-  return result;
+  safeStorage.removeItem('inv_doc_' + uniqueId);
+  try {
+    let history = JSON.parse(safeStorage.getItem('invoice_history_cache') || '[]');
+    history = history.filter(i => i.uniqueId !== uniqueId);
+    safeStorage.setItem('invoice_history_cache', JSON.stringify(history));
+  } catch(e) {}
+  return { success: true };
 }
 
-
-/**
- * POST ?action=updateClientDue — Sync a client's DueAmount in the Clients sheet.
- * Called automatically after every invoice save so the Clients sheet always
- * reflects the latest outstanding balance.
- * @param {string} clientName  Exact client name (case-insensitive match on backend)
- * @param {number} dueAmount   New due amount (0 means fully paid / no due)
- */
 async function apiUpdateClientDue(clientName, dueAmount) {
-  if (!clientName) return; // no client, skip silently
-  try {
-    const result = await _apiFetch({ action: 'updateClientDue' }, {
-      clientName: clientName.trim(),
-      dueAmount: parseFloat(dueAmount) || 0,
-    });
-    return result;
-  } catch (err) {
-    // Non-critical — don't surface to user, just log
-    console.warn('updateClientDue failed (non-critical):', err.message);
+  if (!clientName) return;
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      await sb.from('clients').update({ balance: parseFloat(dueAmount) || 0 }).ilike('name', clientName.trim());
+    } catch(e) {
+      console.warn('apiUpdateClientDue note:', e.message);
+    }
   }
 }
 
-
-/**
- * GET /nextInvoiceNumber — Fetch the next auto-incremented invoice number from sheet.
- * @returns {Promise<string>}  e.g. "INV-042"
- */
 async function apiGetNextInvoiceNumber() {
-  try {
-    const result = await _apiFetch({ action: 'getNextInvoiceNumber' });
-    return result.data;
-  } catch (err) {
-    // Local fallback if GAS is not yet updated
-    const cached = safeStorage.getItem('invoice_history_cache');
-    if (cached) {
+  const cached = safeStorage.getItem('invoice_history_cache');
+  if (cached) {
+    try {
       const list = JSON.parse(cached);
       const nums = list.map(i => parseInt(String(i.invoiceNumber || 0).replace(/[^0-9]/g, ''), 10) || 0);
       const max = Math.max(99, ...nums);
       return String(max + 1).padStart(3, '0');
-    }
-    return '100';
+    } catch (e) {}
   }
+  return '100';
 }
-
 
 // ─── PRIVATE VALIDATION ───────────────────────────────────────────────────────
 function _validateInvoicePayload(data) {
@@ -327,16 +519,13 @@ function _validateInvoicePayload(data) {
 }
 
 // ─── SHARED UI HELPERS (Theme & Profile) ──────────────────────────────────────
-function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  safeStorage.setItem('theme', theme);
-  const icon = document.getElementById('theme-icon');
-  if (icon) icon.textContent = theme === 'dark' ? 'dark_mode' : 'light_mode';
+function applyTheme(theme = 'light') {
+  document.documentElement.setAttribute('data-theme', 'light');
+  safeStorage.setItem('theme', 'light');
 }
 
 function toggleTheme() {
-  const current = safeStorage.getItem('theme') || 'dark';
-  applyTheme(current === 'light' ? 'dark' : 'light');
+  applyTheme('light');
 }
 
 function showProfileSymbol() {
@@ -356,10 +545,8 @@ function showProfileSymbol() {
 
 // Global initialization for all pages
 window.addEventListener('DOMContentLoaded', () => {
-  applyTheme(safeStorage.getItem('theme') || 'dark');
+  applyTheme('light');
   showProfileSymbol();
-  const btn = document.getElementById('theme-toggle');
-  if (btn) btn.onclick = toggleTheme;
 
   // ─── GLOBAL TEXT FORMATTING ───────────────────────────────────────────────
   // Apply special formatting to all text-like inputs site-wide

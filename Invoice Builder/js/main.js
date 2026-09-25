@@ -1739,7 +1739,7 @@ function drawVectorInvoicePdf(pdf, payload) {
   pdf.setTextColor(30, 41, 59);
   pdf.setFont('helvetica', 'normal');
 
-  pdfDrawImageIfReady(pdf, $('paper-logo'), 'JPEG', margin, y, 28, 18);
+  pdfDrawImageIfReady(pdf, $('paper-logo'), 'JPEG', margin, y, 35, 23);
 
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(16);
@@ -1987,7 +1987,7 @@ function drawA4InvoicePdf(pdf, payload) {
 
     if (!repeatHeader) {
       const headerY = margin + topGap;
-      pdfDrawImageIfReady(pdf, $('paper-logo'), 'JPEG', margin, headerY, 28, 18);
+      pdfDrawImageIfReady(pdf, $('paper-logo'), 'JPEG', margin, headerY, 35, 23);
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(16);
       pdf.text(payload.business?.company || 'Invoice', 105, headerY + 6, { align: 'center' });

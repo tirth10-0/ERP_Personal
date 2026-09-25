@@ -18,11 +18,6 @@ function normalizeGSTIN(value) {
   return String(value || '').trim().toUpperCase();
 }
 
-// Use existing API_SECRET and APPS_SCRIPT_URL from api.js if available, or define fallback
-const MASTER_API_URL = typeof APPS_SCRIPT_URL !== 'undefined' ? APPS_SCRIPT_URL : window.location.origin + '/api';
-const MASTER_API_SECRET = typeof API_SECRET !== 'undefined' ? API_SECRET : 'sk_agro_secure_key_2026'; // Match Code.gs
-
-
 
 function switchTab(tab) {
   currentTab = tab;
@@ -77,47 +72,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ─── API INTERACTIONS ───────────────────────────────────────
 
-async function fetchMasterData(action) {
-  try {
-    const res = await fetch(`${MASTER_API_URL}?action=${action}&apiKey=${MASTER_API_SECRET}`);
-    const json = await res.json();
-    return json.success ? json.data : [];
-  } catch (err) {
-    console.error(`Error fetching ${action}:`, err);
-    return [];
-  }
-}
-
-async function postMasterData(action, data) {
-  try {
-    const url = new URL(MASTER_API_URL);
-    url.searchParams.set('action', action);
-    url.searchParams.set('apiKey', MASTER_API_SECRET);
-
-    const res = await fetch(url.toString(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(data) // Send just the data in the body
-    });
-    const json = await res.json();
-    if (!json.success) throw new Error(json.error || 'Request failed');
-    return true;
-  } catch (err) {
-    console.error(`Error posting ${action}:`, err);
-    showToast(`Error: ${err.message}`, true);
-    return false;
-  }
-}
-
 async function loadData() {
   document.getElementById('products-tbody').innerHTML = `<tr><td colspan="6"><div class="loading-row-content"><span class="material-symbols-outlined spinner-icon">autorenew</span> Loading...</div></td></tr>`;
   document.getElementById('clients-tbody').innerHTML = `<tr><td colspan="6"><div class="loading-row-content"><span class="material-symbols-outlined spinner-icon">autorenew</span> Loading...</div></td></tr>`;
 
-  // Load both in parallel
-  const [prods, cli] = await Promise.all([
-    fetchMasterData('getProducts'),
-    fetchMasterData('getClients')
-  ]);
+  try {
+    const apiObj = window.api || (typeof api !== 'undefined' ? api : null);
+    if (!apiObj) throw new Error('API layer not loaded');
+
+    // Load both in parallel from database
+    const [prods, cli] = await Promise.all([
+      apiObj.getProducts(),
+      apiObj.getClients()
+    ]);
 
   // Normalize Products Data (Handing variations in spreadsheet column headers)
   productsData = (prods || []).map(p => {
@@ -154,10 +121,16 @@ async function loadData() {
       };
   });
 
-      productsData = productsData.slice().reverse();
-      clientsData = clientsData.slice().reverse();
+  productsData = productsData.slice().reverse();
+  clientsData = clientsData.slice().reverse();
 
   renderTables();
+  } catch (err) {
+    console.error('Error loading master data:', err);
+    showToast('Failed to load data: ' + (err.message || err), true);
+    document.getElementById('products-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--danger-text);">Failed to load products</td></tr>';
+    document.getElementById('clients-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--danger-text);">Failed to load clients</td></tr>';
+  }
 }
 
 function renderTables() {
@@ -399,14 +372,17 @@ async function saveRecord(e, keepOpen = false) {
     }
 
     try {
+      const apiObj = window.api || (typeof api !== 'undefined' ? api : null);
+      if (!apiObj) throw new Error('API layer not loaded');
+
       if (isEditing) {
         // ID is stored in the hidden idInput
-        const success = await api.updateProduct(dataPayload[0]);
+        const success = await apiObj.updateProduct(dataPayload[0]);
         if (!success) throw new Error('Update failed');
       } else {
         // New entry with potentially multiple rows (packs)
         for (const item of dataPayload) {
-          const res = await api.addProduct(item);
+          const res = await apiObj.addProduct(item);
           if (res && res.error) throw new Error(res.error);
         }
       }
@@ -435,7 +411,7 @@ async function saveRecord(e, keepOpen = false) {
       }
     } catch (err) {
       console.error('Product save error:', err);
-      showToast('Error saving products: ' + err.message, true);
+      showToast('Error saving products: ' + (err.message || err), true);
     }
   } else {
     const data = {
@@ -448,7 +424,10 @@ async function saveRecord(e, keepOpen = false) {
     };
 
     try {
-      const res = isEditing ? await api.updateClient(data) : await api.addClient(data);
+      const apiObj = window.api || (typeof api !== 'undefined' ? api : null);
+      if (!apiObj) throw new Error('API layer not loaded');
+
+      const res = isEditing ? await apiObj.updateClient(data) : await apiObj.addClient(data);
       if (res && res.error) throw new Error(res.error);
       
       showToast('Client saved successfully');
@@ -456,7 +435,7 @@ async function saveRecord(e, keepOpen = false) {
       closeModal();
     } catch (err) {
       console.error('Client save error:', err);
-      showToast('Error saving client: ' + err.message, true);
+      showToast('Error saving client: ' + (err.message || err), true);
     }
   }
 
@@ -472,17 +451,21 @@ function editRecord(type, id) {
 async function deleteRecord(type, id) {
   if (!confirm(`Are you sure you want to delete this ${type}?`)) return;
 
-  if (type === 'product') {
-    const success = await postMasterData('deleteProduct', { ProductID: id });
-    if (success) {
-      showToast('Product deleted');
+  try {
+    const apiObj = window.api || (typeof api !== 'undefined' ? api : null);
+    if (!apiObj) throw new Error('API layer not loaded');
+
+    if (type === 'product') {
+      await apiObj.deleteProduct(id);
+      showToast('Product deleted successfully');
+      loadData();
+    } else {
+      await apiObj.deleteClient(id);
+      showToast('Client deleted successfully');
       loadData();
     }
-  } else {
-    const success = await postMasterData('deleteClient', { ClientID: id });
-    if (success) {
-      showToast('Client deleted');
-      loadData();
-    }
+  } catch (err) {
+    console.error(`Error deleting ${type}:`, err);
+    showToast(`Error deleting ${type}: ` + (err.message || err), true);
   }
 }

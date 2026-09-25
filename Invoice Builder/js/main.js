@@ -1556,7 +1556,15 @@ function loadSaved() {
     const raw = safeStorage.getItem(LS_KEY);
     if (!raw) return;
     const data = JSON.parse(raw);
-    if (data.fields) setFieldValues(data.fields);
+    if (data.fields) {
+      if (data.fields['s-address'] && (data.fields['s-address'].includes('Balaji Agro') || data.fields['s-address'].includes('207/1') || data.fields['s-address'].includes('Shapar'))) {
+        data.fields['s-address'] = 'Sr. No. 67 and 68, Plot No. 33, Siddhi Vinayak Industrial Zone, At: Virva, Tal: Lodhika, Dist: Rajkot, Gujarat.';
+      }
+      if (data.fields['s-company'] && data.fields['s-company'].includes('S K Agro')) {
+        data.fields['s-company'] = 'Anjani Crop Care';
+      }
+      setFieldValues(data.fields);
+    }
     if (Array.isArray(data.rows) && data.rows.length) {
       rows = [];
       data.rows.forEach(r => addRow(r));
@@ -2360,6 +2368,7 @@ async function downloadPDF() {
       #pdf-invoice-clone { width:794px !important; background:#fff !important; color:#1e293b !important; font-family:'Inter',sans-serif !important; padding:44px 52px !important; box-shadow:none !important; transform:none !important; box-sizing:border-box !important; overflow:visible !important; }
       #pdf-invoice-clone .no-print, #pdf-invoice-clone .remove-row, #pdf-invoice-clone .add-row-btn { display:none !important; }
       #pdf-invoice-clone #paper-logo { max-width:160px !important; max-height:100px !important; object-fit:contain !important; display:block !important; }
+      #pdf-invoice-clone .paper-header { border-bottom: 3px solid #064e3b !important; }
       #pdf-invoice-clone .items-table { table-layout:fixed !important; width:100% !important; border-collapse:collapse !important; }
       ${columnWidthsCss}
       #pdf-invoice-clone .items-table tbody td { overflow:visible !important; white-space:normal !important; word-break:break-word !important; padding:8px 10px !important; vertical-align:top !important; }

@@ -158,6 +158,10 @@ const PROFILE_MODAL = `
           <div style="font-size:14px;font-weight:600;color:var(--text-primary)">Anjani Crop Care</div>
         </div>
         <div style="padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg)">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">Registered Address</div>
+          <div style="font-size:13px;font-weight:500;color:var(--text-primary);line-height:1.4">Sr. No. 67 and 68, Plot No. 33, Siddhi Vinayak Industrial Zone, At: Virva, Tal: Lodhika, Dist: Rajkot, Gujarat.</div>
+        </div>
+        <div style="padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg)">
           <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">Access</div>
           <div style="font-size:14px;font-weight:600;color:var(--text-primary)">All business modules enabled</div>
         </div>

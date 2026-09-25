@@ -41,39 +41,14 @@
 
 <body>
 
-  <!-- â”€â”€ LOGIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
-  <div id="login-screen">
-    <div class="login-card">
-      <div class="login-logo" style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:0;">
-        <div class="brand-logo-icon" style="height:56px;width:56px;display:flex;align-items:center;justify-content:center;background:var(--accent-light);border-radius:12px;padding:6px;border:1px solid var(--border);flex-shrink:0;">
-          <svg viewBox="0 0 100 100" style="width:100%;height:100%;fill:none;stroke:var(--primary);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;">
-            <path d="M35 15 H65 M50 15 V30 M43 30 H57 M30 80 H70 L55 35 V30 H45 V35 L30 80 Z" />
-            <path d="M50 72 C45 62 45 48 50 40 C55 48 55 62 50 72 Z" fill="var(--primary)" />
-          </svg>
-        </div>
-        <span id="brand-logo-text" style="font-size:28px;font-weight:800;color:var(--primary);letter-spacing:-0.5px;">AgroChem</span>
-      </div>
-      <div class="login-sub" style="margin-top:10px">Professional Invoice Builder</div>
-      <input id="l-user" class="login-field" placeholder="Username" type="text" autocomplete="username" />
-      <div class="login-pass-wrap">
-        <input id="l-pass" class="login-field" placeholder="Password" type="password" autocomplete="current-password" />
-        <button type="button" class="pass-toggle-btn" id="pass-toggle-btn" title="Show/Hide Password" aria-label="Show or hide password" aria-pressed="false">
-          <span class="material-symbols-outlined" id="pass-toggle-icon">visibility</span>
-        </button>
-      </div>
-      <button type="button" class="login-btn">Sign In</button>
-      <div class="login-hint"></div>
-    </div>
-  </div>
-
-  <!-- â”€â”€ TOAST â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <!-- ── TOAST ──────────────────────────────────────────────────────── -->
   <div id="toast"></div>
 
-  <!-- â”€â”€ AUTOCOMPLETE DROPDOWN (shared, absolutely positioned) â”€â”€ -->
+  <!-- ── AUTOCOMPLETE DROPDOWN (shared, absolutely positioned) ── -->
   <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
 
-  <!-- â”€â”€ TOOLBAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
-  <div id="toolbar" class="hidden">
+  <!-- ── TOOLBAR ────────────────────────────────────────── -->
+  <div id="toolbar">
     <!-- Brand -->
     <div class="toolbar-brand">
       <div class="brand-logo-icon" style="height:42px;width:42px;display:flex;align-items:center;justify-content:center;background:var(--accent-light);border-radius:8px;padding:4px;border:1px solid var(--border);flex-shrink:0;">
@@ -89,41 +64,43 @@
 
     <div style="flex:1"></div>
 
-    <!-- Desktop Actions -->
-    <div class="toolbar-actions desktop-only">
-      <a class="btn btn-ghost" href="../pages/dashboard.html" style="margin-right:4px;">
-        <span class="material-symbols-outlined">dashboard</span> ERP Dashboard
+    <!-- Toolbar Menu / Actions (Always visible and responsive) -->
+    <div class="toolbar-actions" id="toolbar-actions">
+      <a class="btn btn-ghost" href="../pages/dashboard.html" style="margin-right:4px;" title="ERP Dashboard">
+        <span class="material-symbols-outlined">dashboard</span><span class="toolbar-btn-text"> ERP Dashboard</span>
       </a>
-      <a class="btn btn-ghost" href="history.html" style="margin-right:4px;">
-        <span class="material-symbols-outlined">history</span> History
+      <a class="btn btn-ghost" href="history.html" style="margin-right:4px;" title="Invoice History">
+        <span class="material-symbols-outlined">history</span><span class="toolbar-btn-text"> History</span>
       </a>
-      <button class="btn" id="save-cloud-btn" style="background:var(--primary);color:var(--bg-card);border:none;margin-right:4px;">
-        <span class="material-symbols-outlined">cloud_upload</span> Save
+      <a class="btn btn-ghost" href="master.html" style="margin-right:4px;" title="Master Data Management">
+        <span class="material-symbols-outlined">database</span><span class="toolbar-btn-text"> Master Data</span>
+      </a>
+      <button class="btn btn-save" id="save-cloud-btn" style="background:var(--primary);color:var(--bg-card);border:none;margin-right:4px;" title="Save Invoice">
+        <span class="material-symbols-outlined">cloud_upload</span><span class="toolbar-btn-text"> Save</span>
       </button>
-      <button class="btn btn-primary" id="pdf-btn" style="margin-right:4px;">
-        <span class="material-symbols-outlined">download</span> Download PDF
-      </button>
-      <button class="btn btn-danger" onclick="doLogout()">
-        <span class="material-symbols-outlined">logout</span> Logout
+      <button class="btn btn-primary" id="pdf-btn" style="margin-right:4px;" title="Download PDF Invoice">
+        <span class="material-symbols-outlined">download</span><span class="toolbar-btn-text"> Download PDF</span>
       </button>
     </div>
 
-    <!-- Right: Theme Toggle + Profile (both mobile & desktop) -->
+    <!-- Right: Theme Toggle -->
     <div id="toolbar-right" style="display:flex;align-items:center;gap:10px;margin-left:14px;">
       <button id="theme-toggle" class="theme-toggle" title="Toggle theme">
         <span id="theme-icon" class="material-symbols-outlined">dark_mode</span>
       </button>
-      <!-- profile-symbol injected here by JS -->
     </div>
   </div>
 
-  <!-- â”€â”€ MOBILE BOTTOM TAB BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <!-- ── MOBILE BOTTOM TAB BAR ────────────────────────── -->
   <div id="mobile-tabs" style="display:none;">
     <a class="mob-tab mob-nav-tab" href="../pages/dashboard.html">
       <span class="material-symbols-outlined">dashboard</span> ERP
     </a>
     <a class="mob-tab mob-nav-tab" id="mob-history-tab" href="history.html">
       <span class="material-symbols-outlined">history</span> History
+    </a>
+    <a class="mob-tab mob-nav-tab" id="mob-master-tab" href="master.html">
+      <span class="material-symbols-outlined">database</span> Masters
     </a>
     <button class="mob-tab mob-nav-tab active" id="mob-edit-tab" onclick="showMobilePanel('edit')">
       <span class="material-symbols-outlined">edit_note</span> Edit
@@ -137,12 +114,9 @@
     <button class="mob-tab mob-action-tab mob-tab-pdf" id="mob-pdf-btn">
       <span class="material-symbols-outlined">picture_as_pdf</span> PDF
     </button>
-    <button class="mob-tab mob-action-tab mob-tab-logout" onclick="doLogout()">
-      <span class="material-symbols-outlined">logout</span> Logout
-    </button>
   </div>
 
-  <!-- â”€â”€ CLIENT CRUD MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <!-- ── CLIENT CRUD MODAL ────────────────────────────── -->
   <div id="client-modal" class="modal" style="display:none">
     <div class="modal-content" style="position:relative;">
       <span class="close" onclick="closeClientModal()">&#x2715;</span>
@@ -151,7 +125,7 @@
       <input id="modal-client-addr" class="sb-input" placeholder="Address" style="width:100%" />
       <input id="modal-client-phone" class="sb-input" placeholder="Phone (10 digits)" style="width:100%" />
       <input id="modal-client-gstin" class="sb-input" placeholder="GSTIN (15 chars)" style="width:100%;text-transform:uppercase;" />
-      <input id="modal-client-due" class="sb-input" placeholder="Previous Due Amount (â‚¹)" style="width:100%" />
+      <input id="modal-client-due" class="sb-input" placeholder="Previous Due Amount (₹)" style="width:100%" />
       <div style="display:flex;gap:10px;margin-top:8px">
         <button onclick="saveClientModal()"
           style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--primary);color:var(--bg-card);font-weight:700;cursor:pointer;">Save</button>
@@ -161,8 +135,8 @@
     </div>
   </div>
 
-  <!-- â”€â”€ APP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
-  <div id="app" class="hidden">
+  <!-- ── APP ──────────────────────────────────────────── -->
+  <div id="app">
 
     <!-- SIDEBAR -->
     <div id="sidebar">

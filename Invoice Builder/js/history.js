@@ -24,13 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-        const auth = safeStorage.getItem('inv_auth');
-        if (!auth) {
-            window.location.href = 'index.html';
-            return;
-        }
-        
-        // Load invoices on boot
+        // Load invoices directly on boot without requiring login
         loadHistoryTable();
         
         // Setup Search Filter

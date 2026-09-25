@@ -2630,33 +2630,21 @@ window.addEventListener('DOMContentLoaded', () => {
     document.body.classList.add('material-symbols-loaded');
   }
 
-  // Login key bindings
-  const lPass = $('l-pass');
-  if (lPass) lPass.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-  const lUser = $('l-user');
-  if (lUser) lUser.addEventListener('keydown', e => { if (e.key === 'Enter') { const lp = $('l-pass'); if (lp) lp.focus(); } });
-  const loginBtn = document.querySelector('.login-btn');
-  if (loginBtn) loginBtn.addEventListener('click', doLogin);
-  const passToggleBtn = $('pass-toggle-btn');
-  if (passToggleBtn) passToggleBtn.addEventListener('click', togglePasswordVisibility);
-
   forceUppercaseValue($('s-gstin'));
   forceUppercaseValue($('s-client-gstin'));
   forceUppercaseValue($('modal-client-gstin'));
 
-  // Check if already logged in
+  // Boot Invoice Builder immediately without login requirement
   try {
-    const auth = safeStorage.getItem('inv_auth');
-    const mobile = safeStorage.getItem('inv_user_mobile');
-    if (auth) {
-      $('login-screen').style.display = 'none';
-      $('toolbar').classList.remove('hidden');
-      $('app').classList.remove('hidden');
-      initMobile();
-      bootApp(mobile);
-    }
+    const mobile = (typeof safeStorage !== 'undefined' && safeStorage?.getItem('inv_user_mobile')) || '9664675227';
+    const toolbar = $('toolbar');
+    const app = $('app');
+    if (toolbar) toolbar.classList.remove('hidden');
+    if (app) app.classList.remove('hidden');
+    if (typeof initMobile === 'function') initMobile();
+    if (typeof bootApp === 'function') bootApp(mobile);
   } catch (err) {
-    console.error('Error during boot auth check:', err);
+    console.error('Error during bootApp:', err);
   }
 });
 

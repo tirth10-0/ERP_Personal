@@ -5,6 +5,17 @@
   const storedTheme = localStorage.getItem('theme');
   const initialTheme = storedTheme === 'dark' || storedTheme === 'light' ? storedTheme : 'dark';
   document.documentElement.setAttribute('data-theme', initialTheme);
+
+  // Preconnect to Supabase to eliminate DNS & TLS handshake latency on queries
+  try {
+    if (!document.querySelector('link[rel="preconnect"][href*="supabase.co"]')) {
+      const pc = document.createElement('link');
+      pc.rel = 'preconnect';
+      pc.href = 'https://jtbettizhwwqmuyofapm.supabase.co';
+      pc.crossOrigin = 'anonymous';
+      document.head.appendChild(pc);
+    }
+  } catch (_) {}
 })();
 
 function getLogoUrl() {

@@ -497,11 +497,17 @@
       </div>
     </div>
     <div style="flex-grow:1;"></div>
-    <div id="toolbar-right" style="display:flex;align-items:center;gap:10px;">
-      <a class="btn btn-ghost erp-dash-btn" href="../pages/dashboard.html" style="font-size: 14px; padding: 6px 12px; display: flex; align-items: center; gap: 6px; text-decoration: none; color: inherit;">
+    <div id="toolbar-right" style="display:flex;align-items:center;gap:8px;">
+      <a class="btn btn-ghost erp-dash-btn" href="index.html" style="font-size: 13px; padding: 6px 10px; display: flex; align-items: center; gap: 6px; text-decoration: none; color: inherit;" title="Back to Invoice Builder">
+        <span class="material-symbols-outlined">receipt_long</span><span class="erp-label"> Builder</span>
+      </a>
+      <a class="btn btn-ghost erp-dash-btn" href="history.html" style="font-size: 13px; padding: 6px 10px; display: flex; align-items: center; gap: 6px; text-decoration: none; color: inherit;" title="Invoice History">
+        <span class="material-symbols-outlined">history</span><span class="erp-label"> History</span>
+      </a>
+      <a class="btn btn-ghost erp-dash-btn" href="../pages/dashboard.html" style="font-size: 13px; padding: 6px 10px; display: flex; align-items: center; gap: 6px; text-decoration: none; color: inherit;" title="ERP Dashboard">
         <span class="material-symbols-outlined">dashboard</span><span class="erp-label"> ERP Dashboard</span>
       </a>
-      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
         <span id="theme-icon" class="material-symbols-outlined">light_mode</span>
       </button>
     </div>

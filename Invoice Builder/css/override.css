@@ -192,8 +192,51 @@ html, body, #app, #sidebar, #main {
 .items-table tbody td {
   word-break: break-word !important;
 }
-#toolbar .toolbar-actions,
-#toolbar-right {
-  flex-wrap: wrap;
-  gap: 8px;
+#toolbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 16px !important;
+  height: 60px !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+  background: var(--bg-card) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+#toolbar .toolbar-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+#toolbar .toolbar-actions .btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 7px 12px !important;
+  border-radius: 8px !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+#toolbar .toolbar-actions .btn:hover {
+  filter: brightness(1.1);
+}
+
+@media (max-width: 860px) {
+  #toolbar {
+    padding: 0 10px !important;
+  }
+  #toolbar .toolbar-actions .toolbar-btn-text {
+    display: none !important;
+  }
+  #toolbar .toolbar-actions .btn {
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+  }
 }
